@@ -1,0 +1,130 @@
+== Porting Tool
+
+WARNING: Work in progress.
+Nothing useful just yet.
+
+This is a small library that can parse clj/cljs/cljc files and apply a set of simple transforms.
+The transforms can help when porting a code base to a different version of a library where things have changed in a way that you can describe easily.
+
+The following transforms are supported:
+
+* Renames.
+A function changes name or moves from one ns to another.
+(TODO)
+* User-specified, trigger on a particular form.
+A generic transform triggered when a particular function/macro is found.
+(TODO)
+
+=== Function Moves
+
+Sometimes you'd like to move a function from one namespace to another.
+
+Say the function `some.lib/f` is moved and renamed to `other.lib/g`:
+
+Old program:
+
+```
+(ns my.thing
+  (:require
+    [some.lib :as lib :refer [f]]))
+
+(lib/f)
+(f)
+```
+
+New program:
+
+```
+(ns my.thing
+  (:require
+    [other.lib :as lib]))
+
+(lib/g)
+(g)
+```
+
+The configuration for this kind of transform is:
+
+```
+{:rename {'some.lib/f 'other.lib/g}}
+```
+
+=== Arbitrary Transforms
+
+Sometimes you just need to rewrite something in a more general way.
+Say you have the following DSL for a macro:
+
+```
+(ns my.thing
+  (:require
+    [fulcro.client.primitives :refer [defsc]))
+
+(defsc Thing [this props]
+  {:componentDidMount (fn [] ...)}
+  ...)
+```
+
+and the signature of the lambda on the `:componentDidMount` needs to change to include the symbol of the first argument of `defsc` (`this` in the example):
+
+```
+(ns my.thing
+  (:require
+    [fulcro.client.primitives :refer [defsc]))
+
+(defsc Thing [this props]
+  {:componentDidMount (fn [this] ...)}
+  ...)
+```
+
+NOTE: combinations are possible.
+The macro `defsc` could both need to move *and* need transforms.
+Arbitrary transforms are always applied *before* the move, and are therefore configured to triggered on the *old* fully-qualified symbol.
+
+The configuration for this kind of transform is a map keyed by the *old* symbol.
+The value is a function that will receive the parsing environment and the unaltered form, and should return the updated form:
+
+```
+(defn rewrite-lifecycle-signatures [env defsc-form] ...)
+
+...
+
+{:transforms {'fulcro.client.primitives/defsc rewrite-lifecycle-signatures}}
+```
+
+==== The Transform `env`
+
+Your transform `env` will include a number of useful things:
+
+`:nsalias->ns`:: A map from namespace aliases to the real namespace (from the `:as` clauses in the requires)
+`:raw-sym->fqsym`:: A map from raw symbols to their fully-qualified name (from the `:refer` clauses in the requires)
+`:current-file`:: The name of the current file
+
+Note that the form passed to the transform will also have (recursively) line/column metadata.
+
+=== Manual Porting Messages
+
+Sometimes there is no transform possible and you just need to inform the user that there is a problem.
+The arbitrary transform handler can output a custom message in this case, and simply return the original form unaltered.
+
+```
+(defn warn-disappeared [env original-form]
+  (println "WARNING: " (first original-form) " no longer exists!")
+  original-form)
+
+...
+
+{:transforms {'some.ns/deprecated-function warn-disappeared}}
+```
+
+== Limitations
+
+This library is *not* a full compiler, and as such it cannot possibly comprehend your code.
+Clojure(script) macros can create bindings that *should* shadow namespace aliases, but this library has (TODO: support `let` and `defn`) limited support for figuring out when shadowing is happening.
+
+If you have a macro that behaves like `defn` or `let` you can configure the library to analyze those with this config:
+
+```
+{:let-forms ['my.macros/special-let]
+ :defn-forms ['my.macros/special-defn]}
+```
+

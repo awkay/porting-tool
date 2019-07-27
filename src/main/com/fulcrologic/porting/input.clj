@@ -3,13 +3,11 @@
   (:require
     [clojure.tools.reader :as edn]
     [clojure.tools.reader.reader-types :as readers]
-    [clojure.pprint :refer [pprint]]
+    [clojure.pprint :as pp :refer [pprint]]
     [com.fulcrologic.porting.parsing.namespace-parser :refer [parse-namespace]]
     [com.fulcrologic.porting.parsing.util :refer [*current-file*]]
     [clojure.java.io :as io])
   (:import (java.io StringReader)))
-
-(defn cljc->map [s] (vary-meta (apply hash-map s) assoc ::cljc-form? true))
 
 (defn read [pbr lang]
   (let [read-form #(edn/read {:read-cond :allow
@@ -39,6 +37,3 @@
           rdr (io/reader s)
           pbr (readers/indexing-push-back-reader rdr)]
       (read pbr lang))))
-
-(comment
-  (read-file "/Users/tonykay/fulcrologic/porting-tool/resources/sample.clj" :clj))
