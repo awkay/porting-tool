@@ -25,4 +25,20 @@
       (assertions
         "Detects the correct differences"
         (nsalias->ns 'io) => 'clojure.java.io
-        (nsalias->ns 'bah) => 'boo))))
+        (nsalias->ns 'bah) => 'boo)))
+  (behavior "complex requires"
+    (let [clj-forms (input/read-string "(ns boo
+                                          (:require
+                                            [clojure.io :as io]
+                                            [com.fulcrologic.fulcro
+                                                     [component :as comp :refer [defsc]]
+                                                     [application :as app]]))"
+                      :clj)
+          env       (nsp/parse-namespace {} (first clj-forms))
+          {:keys [nsalias->ns raw-sym->fqsym]} env]
+      (assertions
+        "can resolve prefixed globals"
+        (raw-sym->fqsym 'defsc) => 'com.fulcrologic.fulcro.component/defsc
+        "Adds resolution for aliased nses"
+        (nsalias->ns 'comp) => 'com.fulcrologic.fulcro.component
+        (nsalias->ns 'app) => 'com.fulcrologic.fulcro.application))))
