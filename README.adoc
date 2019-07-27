@@ -128,3 +128,23 @@ If you have a macro that behaves like `defn` or `let` you can configure the libr
  :defn-forms ['my.macros/special-defn]}
 ```
 
+so that:
+
+```
+(ns my.thing
+  (:require [some.lib :refer [f]]))
+
+(my.macros/special-defn something [f]
+  (f))
+```
+
+gets correctly transformed when renaming `some.lib/f` to `other.lib/g`:
+
+```
+(ns my.thing
+  (:require [other.lib :refer [g]]))
+
+;; not affected. `f` shadows the referred alias
+(my.macros/special-defn something [f]
+  (f))
+```
