@@ -29,6 +29,8 @@
           pbr (readers/indexing-push-back-reader rdr)]
       (read pbr lang))))
 
+(comment
+  (read-string "(defn [s] #?(:clj 1 :cljs 2))" :none))
 (defn read-file [filename lang]
   "Read forms from a file. `lang` should be :cljs or :clj. If the content is CLJC, you will receive
   the forms for the specified lang."

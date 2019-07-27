@@ -2,7 +2,8 @@
   (:require
     [com.fulcrologic.porting.parsing.util :refer [find-map-vals clear-raw-syms]]
     [clojure.core.specs.alpha :as specs]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s])
+  (:import (clojure.lang ReaderConditional)))
 
 (declare process-form)
 
@@ -37,6 +38,22 @@
               (apply list (map (partial process-form env) l))
               (meta l)))))
 
+;; TASK: we need to make the env have "both" "clj" and "cljs" configs. The both applies
+;; normally, but in this function we need to process the sub-forms down each config path.
+(defn process-reader-conditional [env {:keys [form splicing?]}]
+  (let [{:keys [clj cljs] :as features} (into {} (map vec) (partition 2 form))
+        clj?      (contains? features :clj)
+        cljs?     (contains? features :cljs)
+        clj-env   (merge env (:clj env))
+        cljs-env  (merge env (:cljs env))
+        clj-form  (process-form clj-env clj)
+        cljs-form (process-form cljs-env cljs)]
+    (ReaderConditional/create
+      (with-meta (cond-> (list)
+                   cljs? (->> (cons cljs-form) (cons :cljs))
+                   clj? (->> (cons clj-form) (cons :clj))) (meta form))
+      splicing?)))
+
 (defn process-form
   "Process (recursively) the given form. Returns the transformed form."
   [env form]
@@ -50,4 +67,5 @@
                                form) (meta form))
       (set? form) (with-meta (into #{} (map p) form) (meta form))
       (symbol? form) (with-meta (process-symbol env form) (meta form))
+      (instance? ReaderConditional form) (process-reader-conditional env form)
       :else form)))
