@@ -14,3 +14,24 @@
   ([message form]
    (compile-warning! message form)
    (throw (ex-info "Failed" {}))))
+
+(defn find-map-vals
+  "Recursively searches `data` for maps that contain `k`. Returns all such values at those `k`."
+  [data k]
+  (let [result (atom #{})]
+    (clojure.walk/prewalk
+      (fn [ele]
+        (when (and (map? ele) (contains? ele k))
+          (swap! result conj (get ele k)))
+        ele)
+      data)
+    @result))
+
+(defn clear-raw-syms
+  "returns an env with the global resolution of the given syms elided."
+  [env syms]
+  (reduce
+    (fn [e s]
+      (update e :raw-sym->fqsym dissoc s))
+    env
+    syms))

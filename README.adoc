@@ -4,7 +4,8 @@ WARNING: Work in progress.
 Nothing useful just yet.
 
 This is a small library that can parse clj/cljs/cljc files and apply a set of simple transforms.
-The transforms can help when porting a code base to a different version of a library where things have changed in a way that you can describe easily.
+The transforms can help when porting a code base to a different version of a library where things have
+changed in a way that you can describe easily.
 
 The following transforms are supported:
 
@@ -19,7 +20,7 @@ A generic transform triggered when a particular function/macro is found.
 
 Sometimes you'd like to move a function from one namespace to another.
 
-Say the function `some.lib/f` is moved and renamed to `other.lib/g`:
+Say the function `some.lib/f` is moved and renamed to `other.thing/g`:
 
 Old program:
 
@@ -32,21 +33,51 @@ Old program:
 (f)
 ```
 
-New program:
+Desired new program:
 
 ```
 (ns my.thing
   (:require
-    [other.lib :as lib]))
+    [other.thing :as thing]))
 
-(lib/g)
-(g)
+(thing/g)
+(thing/g)
 ```
 
 The configuration for this kind of transform is:
 
 ```
-{:rename {'some.lib/f 'other.lib/g}}
+{:rename {'some.lib/f 'other.lib/g}
+ :deleted-namespaces #{'other.lib}
+ :new-requires {'other.lib '[other.thing :as thing]}}
+```
+
+Notice that the new namespace must be given an entry in `:new-requires` or the result would have been:
+
+```
+(ns my.thing
+  (:require
+    other.thing))
+
+(other.thing/g)
+(other.thing/g)
+```
+
+You may put `:refer` in your new require, but due to possible aliasing issues the porting tool is
+conservative and will not use them in mechanical renames.
+
+If an old namespace has disappeared completely you should list it in the `deleted-namespaces` to ensure that it
+is removed from the file. Namespaces can side-effect, so normally a require is not removed (only explicit refers
+to moved names will be removed). In the example above, without the deleted namespaces, the result would have been:
+
+```
+(ns my.thing
+(:require
+    [other.thing :as thing]
+    [some.lib :as lib]))
+
+(thing/f)
+(thing/f)
 ```
 
 === Arbitrary Transforms
@@ -64,7 +95,8 @@ Say you have the following DSL for a macro:
   ...)
 ```
 
-and the signature of the lambda on the `:componentDidMount` needs to change to include the symbol of the first argument of `defsc` (`this` in the example):
+and the signature of the lambda on the `:componentDidMount` needs to change to include the symbol of the first argument
+of `defsc` (`this` in the example):
 
 ```
 (ns my.thing
@@ -119,13 +151,14 @@ The arbitrary transform handler can output a custom message in this case, and si
 == Limitations
 
 This library is *not* a full compiler, and as such it cannot possibly comprehend your code.
-Clojure(script) macros can create bindings that *should* shadow namespace aliases, but this library has (TODO: support `let` and `defn`) limited support for figuring out when shadowing is happening.
+Clojure(script) macros can create bindings that *should* shadow namespace aliases, but this library has
+(TODO: support `let` and `defn`) limited support for figuring out when shadowing is happening.
 
 If you have a macro that behaves like `defn` or `let` you can configure the library to analyze those with this config:
 
 ```
-{:let-forms ['my.macros/special-let]
- :defn-forms ['my.macros/special-defn]}
+{:let-forms #{'my.macros/special-let}
+ :defn-forms #{'my.macros/special-defn}}
 ```
 
 so that:
@@ -148,3 +181,5 @@ gets correctly transformed when renaming `some.lib/f` to `other.lib/g`:
 (my.macros/special-defn something [f]
   (f))
 ```
+
+Additional support for common constructs like `doseq` and `loop` are possible, and probably not that hard.

@@ -3,8 +3,7 @@
     [com.fulcrologic.porting.parsing.util :refer [compile-error! compile-warning! *current-form*]]
     [clojure.pprint :refer [pprint]]
     [clojure.core.specs.alpha :as specs]
-    [clojure.spec.alpha :as s]
-    [taoensso.timbre :as log]))
+    [clojure.spec.alpha :as s]))
 
 (defn- extract-libspec [env {:keys [lib options]}]
   (let [{:keys [as refer]} options
