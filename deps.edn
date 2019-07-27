@@ -1,0 +1,18 @@
+{:paths   ["src/main"]
+
+ :deps    {com.taoensso/timbre          {:mvn/version "4.10.0"}
+           com.taoensso/encore          {:mvn/version "2.94.0"}
+           org.clojure/tools.reader     {:mvn/version "1.3.2"}
+           org.clojure/core.specs.alpha {:mvn/version "0.2.44"}
+           expound                      {:mvn/version "0.7.2"}
+           org.clojure/tools.namespace  {:mvn/version "0.3.0-alpha4"}
+           gnl/ghostwheel               {:mvn/version "0.3.9"}
+           org.clojure/clojure          {:mvn/version "1.10.0"}}
+
+ :aliases {:test      {:extra-paths ["src/test" "resources"]
+                       :extra-deps  {org.clojure/test.check  {:mvn/version "0.9.0"}
+                                     fulcrologic/fulcro-spec {:mvn/version "3.1.4"}}}
+
+           :clj-tests {:extra-paths ["src/test"]
+                       :main-opts   ["-m" "kaocha.runner"]
+                       :extra-deps  {lambdaisland/kaocha {:mvn/version "0.0-418"}}}}}
