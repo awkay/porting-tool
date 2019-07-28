@@ -1,4 +1,5 @@
-(ns com.fulcrologic.porting.parsing.util)
+(ns com.fulcrologic.porting.parsing.util
+  (:require [taoensso.timbre :as log]))
 
 (def ^:dynamic *current-file* "unknown")
 (def ^:dynamic *current-form* nil)
@@ -7,12 +8,13 @@
   ([message] (compile-warning! message *current-form*))
   ([message form]
    (let [{:keys [line column]} (meta form)]
-     (println (str *current-file* " " line ":" column " - " message)))))
+     (log/warn (str *current-file* " " line ":" column " - " message)))))
 
 (defn compile-error!
   ([message] (compile-error! message *current-form*))
   ([message form]
-   (compile-warning! message form)
+   (let [{:keys [line column]} (meta form)]
+     (log/error (str *current-file* " " line ":" column " - " message)))
    (throw (ex-info "Failed" {}))))
 
 (defn find-map-vals

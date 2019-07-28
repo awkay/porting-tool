@@ -6,7 +6,7 @@
 
 (specification "namespace parser"
   (behavior "CLJC Parsing (clj)"
-    (let [clj-forms (input/read-string "(ns sample\n  (:use\n    [clojure.java.ui])\n  (:require\n    #? (:clj [clojure.edn :as edn :refer [f g h]] :cljs [boo :as bah])\n    [clojure.java.io :as io :refer :all]))"
+    (let [clj-forms (input/read-string "(ns sample\n  (:use\n    [clojure.java.ui])\n  (:require\n    #? (:clj [clojure.edn :as edn :refer [f g h]] :cljs [boo :as bah])\n    simple.namespace [clojure.java.io :as io :refer :all]))"
                       :clj)
           env       (nsp/parse-namespace {} (first clj-forms))
           {:keys [nsalias->ns raw-sym->fqsym]} env]
