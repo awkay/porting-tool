@@ -2,8 +2,11 @@
   (:require
     [ghostwheel.core :refer [>defn >defn- | =>]]
     [com.fulcrologic.porting.specs :as pspec]
+    [clojure.core.specs.alpha :as specs]
     [taoensso.timbre :as log]
-    [clojure.spec.alpha :as s]))
+    [clojure.spec.alpha :as s]
+    [clojure.set :as set]
+    [clojure.walk :as walk]))
 
 (def ^:dynamic *current-file* "unknown")
 (def ^:dynamic *current-form* nil)
@@ -44,15 +47,19 @@
      (log/error (str *current-file* " " line ":" column " - " message)))
    (throw (ex-info "Failed" {}))))
 
-(>defn find-map-vals
-  "Recursively searches `data` for maps that contain `k`. Returns all such values at those `k`."
+(>defn find-maplike-vals
+  "Recursively searches `data` for maps that contain `k`, or vectors that look like MapEntries.
+  Returns all such values at those `k`."
   [data k]
   [any? keyword? => set?]
   (let [result (atom #{})]
     (clojure.walk/prewalk
       (fn [ele]
-        (when (and (map? ele) (contains? ele k))
-          (swap! result conj (get ele k)))
+        (cond
+          (and (map? ele) (contains? ele k)) (swap! result conj (get ele k))
+          (and (vector? ele) (even? (count ele))) (let [m (into {} (map vec) (partition 2 ele))]
+                                                    (when-let [v (get m k)]
+                                                      (swap! result conj v))))
         ele)
       data)
     @result))
@@ -70,12 +77,10 @@
 (>defn clear-raw-syms
   "updates a processing env with the global resolution of the given syms elided for the set given features,
   where `features` is a #{:clj :cljs :agnostic}."
-  [env syms features]
-  [::pspec/processing-env (s/every symbol?) (s/every ::pspec/feature :kind set?) => ::pspec/processing-env]
-  (reduce
-    (fn [e feature] (update-in e [:parsing-envs feature] clear-parsing-syms syms))
-    env
-    features))
+  [env syms]
+  [::pspec/processing-env (s/every symbol?) => ::pspec/processing-env]
+  (let [feature (:feature-context env)]
+    (update-in env [:parsing-envs feature] clear-parsing-syms syms)))
 
 (>defn sym->fqsym
   "Resolve the given symbol against the current processing env. Returns a fully-qualified symbol if the symbol
@@ -119,3 +124,29 @@
     (if desired-alias
       [ns :as desired-alias]
       ns)))
+
+(>defn raw-globals
+  "Returns the current names (as a set of symbols) from other namespaces that are aliased to simple
+  symbols for the current processing env."
+  [env]
+  [::pspec/processing-env => (s/every simple-symbol? :kind set?)]
+  (let [feature (:feature-context env)]
+    (-> env
+      (get-in [:parsing-envs feature :raw-sym->fqsym])
+      keys
+      set)))
+
+(>defn bound-syms
+  "Given a defn-like form: Finds all of the symbol bindings in the argument list(s) (even with destructuring)
+  and returns a set of those simple symbols."
+  [binding-form]
+  [::specs/binding-form => (s/every simple-symbol? :kind set?)]
+  (let [bindings (s/conform ::specs/binding-form binding-form)
+        syms     (atom #{})]
+    (walk/prewalk
+      (fn [e]
+        (when (symbol? e)
+          (swap! syms conj e))
+        e)
+      bindings)
+    @syms))

@@ -1,6 +1,7 @@
 (ns com.fulcrologic.porting.specs
   (:require
     [clojure.test.check.generators :as tcgen]
+    [clojure.core.specs.alpha :as specs]
     [clojure.spec.gen.alpha :as gen]
     [clojure.spec.alpha :as s]))
 
@@ -50,6 +51,9 @@
                                    ::config
                                    ::feature-context]
                           :opt-un [::current-ns]))
+
+(s/def ::let-like (s/spec (s/cat :sym symbol? :bindings ::specs/bindings :body (s/* any?))))
+(s/def ::defn-like (s/spec (s/cat :sym symbol? :args ::specs/defn-args)))
 
 (comment
   (gen/sample (s/gen ::config))

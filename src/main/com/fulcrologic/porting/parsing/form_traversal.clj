@@ -1,31 +1,53 @@
 (ns com.fulcrologic.porting.parsing.form-traversal
   (:require
-    [com.fulcrologic.porting.parsing.util :refer [find-map-vals clear-raw-syms]]
+    [com.fulcrologic.porting.parsing.util :as util :refer [find-maplike-vals clear-raw-syms]]
     [com.fulcrologic.porting.specs :as pspec]
     [ghostwheel.core :refer [>defn =>]]
     [clojure.core.specs.alpha :as specs]
-    [clojure.spec.alpha :as s])
+    [clojure.spec.alpha :as s]
+    [clojure.set :as set]
+    [taoensso.timbre :as log])
   (:import (clojure.lang ReaderConditional)))
 
 (declare process-form)
 
 (defn process-symbol [{:keys [raw-sym->fqsym nsalias->ns rename]} sym]
-)
-
-(s/def ::let-like (s/cat :sym symbol? :bindings ::specs/bindings :body (s/* any?)))
+  )
 
 (defn process-let [env l]
-  [::pspec/processing-env ::let-like => ::let-like]
-  (let [bindings        (second l)
-        parsed-bindings (s/conform ::specs/bindings bindings)
-        local-syms      (find-map-vals parsed-bindings :local-symbol)
-        env             (clear-raw-syms env local-syms)]
+  [::pspec/processing-env ::pspec/let-like => ::let-like]
+  (let [bindings                  (second l)
+        harzardous-binding-values (into #{} (comp
+                                              (map second)
+                                              (filter simple-symbol?))
+                                    (partition 2 bindings))
+        aliased-symbols           (util/raw-globals env)
+        parsed-bindings           (s/conform ::specs/bindings bindings)
+        local-syms                (find-maplike-vals parsed-bindings :local-symbol)
+        env                       (clear-raw-syms env local-syms)
+        rebound-globals           (set/intersection local-syms aliased-symbols)]
+    (when-let [problems (seq (set/intersection rebound-globals harzardous-binding-values))]
+      (util/compile-warning! (str "The global aliased symbol(s) " (set problems)
+                               " are bound AND used as values in the same let.\n\n"
+                               "FIX: Refactor your the code to use only "
+                               "qualified symbols from other namespaces in the values of the bindings.") l))
     (apply list (first l) (second l)
       (map #(process-form env %) (rest l)))))
 
+
 (>defn process-defn [env l]
-  [::pspec/processing-env list? => list?]
-  l)
+  [::pspec/processing-env ::pspec/defn-like => ::defn-like]
+  (let [args            (rest l)
+        syms            (util/defn-syms l)
+        env             (clear-raw-syms env syms)
+        aliased-symbols (util/raw-globals env)
+        rebound-globals (set/intersection syms aliased-symbols)]
+    (when (seq rebound-globals)
+      (util/compile-warning! (str "Function aliases symbols from other namespaces that have been aliased to simple symbol(s): " rebound-globals
+                               " This is likely to cause incorrect rewrites.\n\n"
+                               "FIX: Rewrite the function's argument list so that it does not conflict with "
+                               "aliased globals, or qualify symbols aliased from other nses.") l))
+    (apply list (first l) (map #(process-form env %) (rest l)))))
 
 (>defn process-list [{:keys [let-forms defn-forms] :as env} l]
   [::pspec/processing-env list? => list?]
