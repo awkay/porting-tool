@@ -1,6 +1,8 @@
 (ns com.fulcrologic.porting.parsing.form-traversal
   (:require
     [com.fulcrologic.porting.parsing.util :refer [find-map-vals clear-raw-syms]]
+    [com.fulcrologic.porting.specs :as pspec]
+    [ghostwheel.core :refer [>defn =>]]
     [clojure.core.specs.alpha :as specs]
     [clojure.spec.alpha :as s])
   (:import (clojure.lang ReaderConditional)))
@@ -8,18 +10,12 @@
 (declare process-form)
 
 (defn process-symbol [{:keys [raw-sym->fqsym nsalias->ns rename]} sym]
-  (let [potential-alias (namespace sym)
-        real-ns         (get nsalias->ns potential-alias)
-        fqsym           (if real-ns
-                          (symbol (name real-ns) (name sym))
-                          (get raw-sym->fqsym sym sym))
-        new-sym         (get rename fqsym)]
-    ;; TASK: support rewriting new sym with new require
-    (if new-sym
-      fqsym
-      sym)))
+)
+
+(s/def ::let-like (s/cat :sym symbol? :bindings ::specs/bindings :body (s/* any?)))
 
 (defn process-let [env l]
+  [::pspec/processing-env ::let-like => ::let-like]
   (let [bindings        (second l)
         parsed-bindings (s/conform ::specs/bindings bindings)
         local-syms      (find-map-vals parsed-bindings :local-symbol)
@@ -27,9 +23,12 @@
     (apply list (first l) (second l)
       (map #(process-form env %) (rest l)))))
 
-(defn process-defn [env l] l)
+(>defn process-defn [env l]
+  [::pspec/processing-env list? => list?]
+  l)
 
-(defn process-list [{:keys [let-forms defn-forms] :as env} l]
+(>defn process-list [{:keys [let-forms defn-forms] :as env} l]
+  [::pspec/processing-env list? => list?]
   (let [f (first l)]
     (cond
       (contains? let-forms f) (process-let env l)
@@ -38,25 +37,27 @@
               (apply list (map (partial process-form env) l))
               (meta l)))))
 
-;; TASK: we need to make the env have "both" "clj" and "cljs" configs. The both applies
-;; normally, but in this function we need to process the sub-forms down each config path.
-(defn process-reader-conditional [env {:keys [form splicing?]}]
+(s/def ::reader-cond #(instance? ReaderConditional %))
+
+(>defn process-reader-conditional [env {:keys [form splicing?]}]
+  [::pspec/processing-env ::reader-cond => ::reader-cond]
   (let [{:keys [clj cljs] :as features} (into {} (map vec) (partition 2 form))
         clj?      (contains? features :clj)
         cljs?     (contains? features :cljs)
-        clj-env   (merge env (:clj env))
-        cljs-env  (merge env (:cljs env))
-        clj-form  (process-form clj-env clj)
-        cljs-form (process-form cljs-env cljs)]
+        clj-env   (assoc env :feature-context :clj)
+        cljs-env  (assoc env :feature-context :cljs)
+        clj-form  (when clj? (process-form clj-env clj))
+        cljs-form (when cljs? (process-form cljs-env cljs))]
     (ReaderConditional/create
       (with-meta (cond-> (list)
                    cljs? (->> (cons cljs-form) (cons :cljs))
                    clj? (->> (cons clj-form) (cons :clj))) (meta form))
       splicing?)))
 
-(defn process-form
+(>defn process-form
   "Process (recursively) the given form. Returns the transformed form."
   [env form]
+  [::pspec/processing-env any? => any?]
   (let [p (partial process-form env)]
     (cond
       (list? form) (with-meta (process-list env form) (meta form))

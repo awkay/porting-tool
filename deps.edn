@@ -11,7 +11,7 @@
            gnl/ghostwheel               {:mvn/version "0.4.0-SNAPSHOT"}}
 
  :aliases {:test      {:extra-paths ["src/test" "resources"]
-                       :extra-deps  {fulcrologic/fulcro-spec {:local/root "/Users/tonykay/fulcrologic/fulcro-spec"} #_{:mvn/version "3.1.4"}}}
+                       :extra-deps  {fulcrologic/fulcro-spec {:mvn/version "3.1.5-SNAPSHOT"}}}
 
            :clj-tests {:main-opts  ["-m" "kaocha.runner"]
                        :extra-deps {lambdaisland/kaocha {:mvn/version "0.0-418"}}}}}

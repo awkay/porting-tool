@@ -12,6 +12,8 @@
 (s/def ::artifact-delete (s/every ::artifact-name :kind set?))
 (s/def ::namespace-move (s/map-of ::namespace ::namespace))
 (s/def ::namespace-delete (s/every ::namespace :kind set?))
+(s/def ::namespace-aliases (s/map-of ::namespace simple-symbol?))
+
 (s/def ::form-predicate (s/fspec
                           :args (s/cat :form any?)
                           :ret boolean?
@@ -23,7 +25,8 @@
 (s/def ::parsing-env (s/keys :opt-un [::nsalias->ns
                                       ::raw-sym->fqsym]))
 
-(s/def ::processing-env (s/map-of ::feature ::parsing-env))
+(s/def ::parsing-envs (s/map-of ::feature ::parsing-env))
+(s/def ::feature-context ::feature)
 
 (s/def ::transform-function (s/fspec
                               :args (s/cat :env ::env :form any?)
@@ -36,10 +39,17 @@
                        :opt-un [::artifact-move
                                 ::namespace-move
                                 ::artifact-delete
+                                ::namespace-aliases
                                 ::namespace-delete
                                 ::transforms]))
 
 (s/def ::config (s/map-of ::feature ::lang-config))
+
+(s/def ::processing-env (s/keys
+                          :req-un [::parsing-envs
+                                   ::config
+                                   ::feature-context]
+                          :opt-un [::current-ns]))
 
 (comment
   (gen/sample (s/gen ::config))
