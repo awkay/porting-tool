@@ -31,7 +31,7 @@
       (when-mocking!
         (util/compile-warning! m f) => (assertions
                                          "logs warnings about binding overlaps"
-                                         (str/includes? m "#{a} is/are") => true)
+                                         (str/includes? m "#{a} are bound AND used") => true)
         (tr/process-form e f) => f
 
         (tr/process-let processing-env let-like-form)))))
@@ -43,19 +43,33 @@
                             :parsing-envs    {:agnostic {:raw-sym->fqsym {'a 'com.boo/a
                                                                           'b 'com.boo/b}}}})
           defn-like-form '(defn f
-                            ([x [e1 e2] {:keys [y z]
-                                 L     :foo
-                                 :as   a
-                                 :or   {y b}}] body)
+                            ([x [e1 e2] {b :foo}] body)
                             ([] body))
-          expected-env   (update-in processing-env [:parsing-envs :agnostic :raw-sym->fqsym] dissoc 'a)]
+          expected-env   (update-in processing-env [:parsing-envs :agnostic :raw-sym->fqsym] dissoc 'b)]
       (when-mocking!
-        (tr/process-form e f) => (do
-                                   (assertions
-                                     "processes each body element without those in the global raw symbol resolution"
-                                     e => expected-env)
-                                   f)
+        (tr/process-form e f) =1x=> (do
+                                      (assertions
+                                        "processes each body element without those in the global raw symbol resolution"
+                                        e => expected-env)
+                                      f)
+        (tr/process-form e f) => f
 
         (tr/process-defn processing-env defn-like-form)))
+    (let [processing-env (util/processing-env
+                           {:feature-context :agnostic
+                            :parsing-envs    {:agnostic {:raw-sym->fqsym {'a 'com.boo/a
+                                                                          'b 'com.boo/b}}}})
+          defn-like-form '(defn f
+                            ([{:keys [y z]
+                               :or   {y b}}] body)
+                            ([] body))]
+      (when-mocking!
+        (tr/process-form e f) => f
+        (util/compile-warning! m f)
+        =1x=> (do
+                (assertions
+                  "warns about aliasing raw syms"
+                  (str/includes? m "that have been aliased") => true)
+                f)
 
-    ))
+        (tr/process-defn processing-env defn-like-form)))))

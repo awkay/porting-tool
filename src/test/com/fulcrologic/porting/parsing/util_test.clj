@@ -67,7 +67,6 @@
 
 (specification "bound-syms"
   (behavior "finds symbol bindings from binding expressions"
-
     (assertions
       "can detect simple symbols"
       (util/bound-syms 'a) => #{'a}

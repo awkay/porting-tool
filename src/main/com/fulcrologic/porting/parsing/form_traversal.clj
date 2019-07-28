@@ -16,17 +16,17 @@
 
 (defn process-let [env l]
   [::pspec/processing-env ::pspec/let-like => ::let-like]
-  (let [bindings                  (second l)
-        harzardous-binding-values (into #{} (comp
-                                              (map second)
-                                              (filter simple-symbol?))
-                                    (partition 2 bindings))
-        aliased-symbols           (util/raw-globals env)
-        parsed-bindings           (s/conform ::specs/bindings bindings)
-        local-syms                (find-maplike-vals parsed-bindings :local-symbol)
-        env                       (clear-raw-syms env local-syms)
-        rebound-globals           (set/intersection local-syms aliased-symbols)]
-    (when-let [problems (seq (set/intersection rebound-globals harzardous-binding-values))]
+  (let [bindings           (second l)
+        hazardous-bindings (into #{} (comp
+                                       (map second)
+                                       (filter simple-symbol?))
+                             (partition 2 bindings))
+        aliased-symbols    (util/raw-globals env)
+        parsed-bindings    (s/conform ::specs/bindings bindings)
+        local-syms         (find-maplike-vals parsed-bindings :local-symbol)
+        env                (clear-raw-syms env local-syms)
+        rebound-globals    (set/intersection local-syms aliased-symbols)]
+    (when-let [problems (seq (set/intersection aliased-symbols hazardous-bindings))]
       (util/compile-warning! (str "The global aliased symbol(s) " (set problems)
                                " are bound AND used as values in the same let.\n\n"
                                "FIX: Refactor your the code to use only "
@@ -36,17 +36,18 @@
 
 
 (>defn process-defn [env l]
-  [::pspec/processing-env ::pspec/defn-like => ::defn-like]
+  [::pspec/processing-env ::pspec/defn-like => ::pspec/defn-like]
   (let [args            (rest l)
-        syms            (util/defn-syms l)
-        env             (clear-raw-syms env syms)
+        syms            (util/all-syms args)
         aliased-symbols (util/raw-globals env)
+        env             (clear-raw-syms env syms)
         rebound-globals (set/intersection syms aliased-symbols)]
     (when (seq rebound-globals)
-      (util/compile-warning! (str "Function aliases symbols from other namespaces that have been aliased to simple symbol(s): " rebound-globals
-                               " This is likely to cause incorrect rewrites.\n\n"
-                               "FIX: Rewrite the function's argument list so that it does not conflict with "
-                               "aliased globals, or qualify symbols aliased from other nses.") l))
+      (util/compile-warning!
+        (str "Function creates symbols in args that have been aliased to simple symbol(s) in the namespace: " rebound-globals
+          " This can cause incorrect rewrites.\n\n"
+          "FIX: Rewrite the function's argument list so that it does not shadow "
+          "other simple symbols from namespace aliasing.") l))
     (apply list (first l) (map #(process-form env %) (rest l)))))
 
 (>defn process-list [{:keys [let-forms defn-forms] :as env} l]

@@ -136,6 +136,18 @@
       keys
       set)))
 
+(>defn all-syms
+  [form]
+  [any? => (s/every simple-symbol? :kind set?)]
+  (let [syms (atom #{})]
+    (walk/prewalk
+      (fn [e]
+        (when (symbol? e)
+          (swap! syms conj e))
+        e)
+      form)
+    @syms))
+
 (>defn bound-syms
   "Given a defn-like form: Finds all of the symbol bindings in the argument list(s) (even with destructuring)
   and returns a set of those simple symbols."
