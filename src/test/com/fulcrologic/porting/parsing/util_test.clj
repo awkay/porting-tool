@@ -43,22 +43,11 @@
         "can resolve symbols that have an aliased ns"
         (util/sym->fqsym processing-env 'sns/some-function) => 'com.boo.sns/some-function))))
 
-(specification "fqsym->aliased-sym"
-  (behavior "resolves a known symbol"
-    (let [processing-env (util/processing-env
-                           {:feature-context :cljs
-                            :config          {:cljs {:namespace-aliases {'com.boo.sns 'sns}}}
-                            :parsing-envs    {:cljs {:nsalias->ns    {'sns 'com.boo.sns}
-                                                     :raw-sym->fqsym {}}}})]
-      (assertions
-        "can resolve fully-qualified smbols to a shorter version using feature context aliases"
-        (util/fqsym->aliased-sym processing-env 'com.boo.sns/foo) => 'sns/foo))))
-
 (specification "require-for"
   (behavior "returns a valid require clause"
     (let [processing-env (util/processing-env
                            {:feature-context :cljs
-                            :config          {:cljs {:namespace-aliases {'com.boo.sns 'sns}}}})]
+                            :config          {:cljs {:namespace->alias {'com.boo.sns 'sns}}}})]
       (assertions
         "returns the simple lib name if no aliases are configured"
         (util/require-for processing-env 'com.boo.other) => 'com.boo.other

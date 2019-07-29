@@ -9,11 +9,11 @@
 
 (s/def ::namespace (s/with-gen simple-symbol? #(s/gen '#{com.company.thing other.thing some.thing clojure.core cljs.test})))
 (s/def ::artifact-name (s/with-gen qualified-symbol? #(s/gen '#{com.company.thing/grapple other.thing/log some.thing/boo clojure.core/reduce cljs.test/deftest})))
-(s/def ::artifact-move (s/map-of ::artifact-name ::artifact-name))
+(s/def ::fqname-old->new (s/map-of ::artifact-name ::artifact-name))
 (s/def ::artifact-delete (s/every ::artifact-name :kind set?))
-(s/def ::namespace-move (s/map-of ::namespace ::namespace))
+(s/def ::namespace-old->new (s/map-of ::namespace ::namespace))
 (s/def ::namespace-delete (s/every ::namespace :kind set?))
-(s/def ::namespace-aliases (s/map-of ::namespace simple-symbol?))
+(s/def ::namespace->alias (s/map-of ::namespace simple-symbol?))
 
 (s/def ::form-predicate (s/fspec
                           :args (s/cat :form any?)
@@ -21,9 +21,11 @@
                           :gen #(s/gen #{(fn predicate [_] true)})))
 
 (s/def ::nsalias->ns (s/map-of simple-symbol? ::namespace))
+(s/def ::ns->alias (s/map-of ::namespace simple-symbol?))
 (s/def ::raw-sym->fqsym (s/map-of simple-symbol? ::artifact-name))
 
 (s/def ::parsing-env (s/keys :opt-un [::nsalias->ns
+                                      ::ns->alias
                                       ::raw-sym->fqsym]))
 
 (s/def ::parsing-envs (s/map-of ::feature ::parsing-env))
@@ -37,10 +39,10 @@
 (s/def ::form-transform (s/tuple ::form-predicate ::transform-function))
 (s/def ::transforms (s/every ::form-transform :kind vector?))
 (s/def ::lang-config (s/keys
-                       :opt-un [::artifact-move
-                                ::namespace-move
+                       :opt-un [::fqname-old->new
+                                ::namespace-old->new
                                 ::artifact-delete
-                                ::namespace-aliases
+                                ::namespace->alias
                                 ::namespace-delete
                                 ::transforms]))
 

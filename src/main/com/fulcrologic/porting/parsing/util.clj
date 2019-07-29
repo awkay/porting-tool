@@ -88,7 +88,7 @@
   [env sym]
   [::pspec/processing-env symbol? => symbol? | #(or (qualified-symbol? %) (= % sym))]
   (let [feature         (:feature-context env)
-        {:keys [nsalias->ns raw-sym->fqsym] :as parsing-env} (get-in env [:parsing-envs feature])
+        {:keys [nsalias->ns raw-sym->fqsym]} (get-in env [:parsing-envs feature])
         potential-alias (some-> sym namespace symbol)
         real-ns         (get nsalias->ns potential-alias)
         fqsym           (if real-ns
@@ -98,18 +98,7 @@
       fqsym
       sym)))
 
-(>defn fqsym->aliased-sym
-  "Given a processing env and a fully-qualified symbol, return either
-  the most succinct qualified symbol that will work in the given feature context."
-  [env sym]
-  [::pspec/processing-env qualified-symbol? => qualified-symbol?]
-  (let [feature        (:feature-context env)
-        {:keys [namespace-aliases]} (get-in env [:config feature])
-        full-namespace (some-> sym namespace symbol)
-        desired-alias  (get namespace-aliases full-namespace)]
-    (if desired-alias
-      (symbol (name desired-alias) (name sym))
-      sym)))
+
 
 (>defn require-for
   "Returns a clj require clause for the given namespace, including the alias, for the current processing
@@ -119,8 +108,8 @@
                                                  :sym ::pspec/namespace
                                                  :lib+opt (s/tuple ::pspec/namespace #{:as} symbol?))]
   (let [feature       (:feature-context env)
-        {:keys [namespace-aliases]} (get-in env [:config feature])
-        desired-alias (get namespace-aliases ns)]
+        {:keys [namespace->alias]} (get-in env [:config feature])
+        desired-alias (get namespace->alias ns)]
     (if desired-alias
       [ns :as desired-alias]
       ns)))
@@ -137,12 +126,13 @@
       set)))
 
 (>defn all-syms
+  "Recursively finds all simple symbols in form."
   [form]
   [any? => (s/every simple-symbol? :kind set?)]
   (let [syms (atom #{})]
     (walk/prewalk
       (fn [e]
-        (when (symbol? e)
+        (when (simple-symbol? e)
           (swap! syms conj e))
         e)
       form)

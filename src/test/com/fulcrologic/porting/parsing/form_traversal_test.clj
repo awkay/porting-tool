@@ -10,6 +10,24 @@
     (let [processing-env (util/processing-env
                            {:feature-context :agnostic
                             :parsing-envs    {:agnostic {:raw-sym->fqsym {'a 'com.boo/a
+                                                                          'x 'com.boo/x
+                                                                          'b 'com.boo/b}}}})
+          let-like-form  '(enc/when-let [{[a c] :list
+                                          x :x} v] (f x) (g a))
+          expected-env   (update-in processing-env [:parsing-envs :agnostic :raw-sym->fqsym] dissoc 'a 'x)]
+      (when-mocking!
+        (tr/process-form e f) =1x=> (do
+                                      (assertions
+                                        "processes each body element without those in the global raw symbol resolution"
+                                        e => expected-env)
+                                      f)
+        (tr/process-form e f) => f
+
+        (tr/process-let processing-env let-like-form)))
+
+    (let [processing-env (util/processing-env
+                           {:feature-context :agnostic
+                            :parsing-envs    {:agnostic {:raw-sym->fqsym {'a 'com.boo/a
                                                                           'b 'com.boo/b}}}})
           let-like-form  '(enc/when-let [a 2] (f x) (g a))
           expected-env   (update-in processing-env [:parsing-envs :agnostic :raw-sym->fqsym] dissoc 'a)]
@@ -19,7 +37,7 @@
                                         "processes each body element without those in the global raw symbol resolution"
                                         e => expected-env)
                                       f)
-        (tr/process-form e f) =2x=> f
+        (tr/process-form e f) => f
 
         (tr/process-let processing-env let-like-form)))
 
