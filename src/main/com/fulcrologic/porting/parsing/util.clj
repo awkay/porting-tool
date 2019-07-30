@@ -34,14 +34,14 @@
     :config          {}
     :feature-context :agnostic}))
 
-(defn compile-warning!
-  ([message] (compile-warning! message *current-form*))
+(defn report-warning!
+  ([message] (report-warning! message *current-form*))
   ([message form]
    (let [{:keys [line column]} (meta form)]
      (log/warn (str *current-file* " " line ":" column " - " message)))))
 
-(defn compile-error!
-  ([message] (compile-error! message *current-form*))
+(defn report-error!
+  ([message] (report-error! message *current-form*))
   ([message form]
    (let [{:keys [line column]} (meta form)]
      (log/error (str *current-file* " " line ":" column " - " message)))

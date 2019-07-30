@@ -36,6 +36,9 @@
                               :ret any?
                               :gen #(s/gen #{(fn xform [e f] f)})))
 
+(s/def ::let-forms (s/every symbol? :kind set?))
+(s/def ::defn-forms (s/every symbol? :kind set?))
+
 (s/def ::form-transform (s/tuple ::form-predicate ::transform-function))
 (s/def ::transforms (s/every ::form-transform :kind vector?))
 (s/def ::lang-config (s/keys
@@ -44,7 +47,9 @@
                                 ::artifact-delete
                                 ::namespace->alias
                                 ::namespace-delete
-                                ::transforms]))
+                                ::transforms
+                                ::let-forms
+                                ::defn-forms]))
 
 (s/def ::config (s/map-of ::feature ::lang-config))
 (s/def ::current-ns ::namespace)

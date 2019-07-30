@@ -39,7 +39,7 @@
         (xform env 'fulcro.client.primitives/defsc) => 'comp/defsc)
 
       (when-mocking
-        (util/compile-error! m f) => (assertions
+        (util/report-error! m f) => (assertions
                                        "issues an error if there is a conflicting alias already in the file's ns"
                                        (str/includes? m "has namespace alias `thing`, but it refers to `other.ns`") => true)
         (xform env 'com.a/x)))))

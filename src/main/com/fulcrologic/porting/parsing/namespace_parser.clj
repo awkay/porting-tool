@@ -1,7 +1,7 @@
 (ns com.fulcrologic.porting.parsing.namespace-parser
   (:require
     [ghostwheel.core :refer [>defn >defn- =>]]
-    [com.fulcrologic.porting.parsing.util :refer [compile-error! compile-warning! *current-form*]]
+    [com.fulcrologic.porting.parsing.util :refer [report-error! report-warning! *current-form*]]
     [com.fulcrologic.porting.specs :as pspec]
     [clojure.pprint :refer [pprint]]
     [clojure.core.specs.alpha :as specs]
@@ -32,7 +32,7 @@
                               e
                               syms))]
       (when (contains? referrals :all)
-        (compile-warning! "Porting tool does not support :refer :all. Please refer your symbols."))
+        (report-warning! "Porting tool does not support :refer :all. Please refer your symbols."))
       (cond-> env
         as (assoc-in [:nsalias->ns as] lib)
         as (assoc-in [:ns->alias lib] as)
@@ -59,13 +59,13 @@
   [::pspec/parsing-env ::clojure-ns => ::pspec/parsing-env]
   (let [pr (s/conform ::specs/ns-form (rest ns-form))]
     (case pr
-      ::s/invalid (compile-error! (s/explain-str ::specs/ns-form ns-form) ns-form)
+      ::s/invalid (report-error! (s/explain-str ::specs/ns-form ns-form) ns-form)
       (let [ns-name  (:ns-name pr)
             clauses  (into {} (:ns-clauses pr))
             requires (-> clauses :require :body)
             env      (assoc env :current-ns ns-name :current-form ns-form)]
         (when (contains? clauses :use)
-          (compile-warning! "Porting tool cannot fully analyze `use` clauses. Please port them to requires."))
+          (report-warning! "Porting tool cannot fully analyze `use` clauses. Please port them to requires."))
         (binding [*current-form* ns-form]
           (reduce
             (fn [e require]
@@ -73,7 +73,7 @@
                 :libspec (extract-libspec e (second (second require)))
                 :prefix-list (extract-prefixes e (second require))
                 (do
-                  (compile-warning! "Unexpected clause in require")
+                  (report-warning! "Unexpected clause in require")
                   e)))
             env
             requires))))))

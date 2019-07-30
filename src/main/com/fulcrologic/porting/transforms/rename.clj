@@ -27,12 +27,12 @@
             (swap! state-atom update-in [::namespaces-needed feature] (fnil conj #{}) full-namespace))
           (when-let [alt-ns (get nsalias->ns desired-alias)]
             (when (not= alt-ns full-namespace)
-              (util/compile-error!
+              (util/report-error!
                 (str "Error. The file already has namespace alias `" desired-alias
                   "`, but it refers to `" alt-ns "`") sym)))
           (symbol (name desired-alias) (name sym)))
         (do
-          (util/compile-warning! "No namespace alias defined for " sym)
+          (util/report-warning! "No namespace alias defined for " sym)
           new-fqname))
       sym)))
 
@@ -76,7 +76,7 @@
         form))))
 
 (def rename-namespaces-transform
-  "A transformer that renames all namespaces within a namespace form according to the configuration in the processing-env.
+  "A transformer that renames all namespaces within a namespace form according to the configuration.
 
   The configuration for renames should include:
 
@@ -109,7 +109,18 @@
       form)))
 
 (def add-missing-namespaces-transform
-  "Adds missing namespaces with desired alias to the ns form.
+  "Adds missing namespaces with desired alias to the ns form. This transform is really a post-step for the rename
+  transform, and has no configuration of it's own.
 
-   Requires you are also using the rename-artifacts transform, which gathers the list of necessary namespaces."
+  The assumption is that a file will have started out in 'good condition', and the only reason there will be a
+  need to add a require is if the rename transform places a symbol in the file for a namespace that was
+  not required by that file.
+
+  Therefore the only configuration is that `:transforms` have both the rename and add missing transforms:
+
+  ```
+  :transforms [rename-artifacts-transform add-missing-namespaces-transform]
+  ```
+
+  TODO: should this be mixed into the rename transform?"
   [add-nses-predicate add-missing-namespaces])

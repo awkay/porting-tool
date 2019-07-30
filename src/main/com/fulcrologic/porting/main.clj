@@ -75,7 +75,7 @@
                   (str/ends-with? filename ".cljs") (process-single filename config :cljs)
                   (str/ends-with? filename ".cljc") (process-cljc filename config)
                   (str/ends-with? filename ".clj") (process-single filename config :clj)
-                  :else (util/compile-error! (str "Cannot determine language from file " filename)))]
+                  :else (util/report-error! (str "Cannot determine language from file " filename)))]
         (pprint f)
         (println))
       (catch Exception e
@@ -98,8 +98,8 @@
                                  rename/add-missing-namespaces-transform]
               :namespace->alias {'com.fulcrologic.fulcro.components 'comp
                                  'com.fulcrologic.fulcro.dom        'dom
-                                 'com.fulcrologic.fulcro.dom-server 'dom}}]
-    (process-file "./resources/trial.cljc"
-      {:agnostic base
-       :cljs     (merge base {:namespace-old->new {'fulcro.client.dom 'com.fulcrologic.fulcro.dom}})
-       :clj      (merge base {:namespace-old->new {'fulcro.client.dom-server 'com.fulcrologic.fulcro.dom-server}})})))
+                                 'com.fulcrologic.fulcro.dom-server 'dom}}
+        config {:agnostic base
+                :cljs     (merge base {:namespace-old->new {'fulcro.client.dom 'com.fulcrologic.fulcro.dom}})
+                :clj      (merge base {:namespace-old->new {'fulcro.client.dom-server 'com.fulcrologic.fulcro.dom-server}})}]
+    ))

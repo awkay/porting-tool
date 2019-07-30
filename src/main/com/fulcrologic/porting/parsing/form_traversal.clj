@@ -24,7 +24,7 @@
         env                (clear-raw-syms env local-syms)
         rebound-globals    (set/intersection hazardous-bindings aliased-symbols)]
     (when-let [problems (seq rebound-globals)]
-      (util/compile-warning! (str "The global aliased symbol(s) " (set problems)
+      (util/report-warning! (str "The global aliased symbol(s) " (set problems)
                                " are bound AND used as values in the same let.\n\n"
                                "FIX: Refactor your the code to use only "
                                "qualified symbols from other namespaces in the values of the bindings.") l))
@@ -38,16 +38,23 @@
         env             (clear-raw-syms env syms)
         rebound-globals (set/intersection syms aliased-symbols)]
     (when (seq rebound-globals)
-      (util/compile-warning!
+      (util/report-warning!
         (str "Function creates symbols in args that have been aliased to simple symbol(s) in the namespace: " rebound-globals
           " This can cause incorrect rewrites.\n\n"
           "FIX: Rewrite the function's argument list so that it does not shadow "
           "other simple symbols from namespace aliasing.") l))
     (apply list (map #(process-form env %) l))))
 
-(>defn process-list [{:keys [let-forms defn-forms] :as env} l]
+(def known-let-forms #{'let 'if-let 'when-let 'binding 'taoensso.encore/if-let 'taoensso.encore/when-let})
+(def known-defn-forms #{'defn 'defn- 'ghostwheel.core/>defn 'ghostwheel.core/>defn-})
+
+(>defn process-list [env l]
   [::pspec/processing-env list? => list?]
-  (let [f (first l)]
+  (let [feature (:feature-context env)
+        {:keys [let-forms defn-forms]} (-> (get-in env [:config feature])
+                                         (update :let-forms set/union known-let-forms)
+                                         (update :defn-forms set/union known-defn-forms))
+        f       (first l)]
     (cond
       (contains? let-forms f) (process-let env l)
       (contains? defn-forms f) (process-defn env l)

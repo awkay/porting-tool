@@ -47,7 +47,7 @@
                                                                           'b 'com.boo/b}}}})
           let-like-form  '(enc/when-let [a a b 2] (f x) (g a))]
       (when-mocking!
-        (util/compile-warning! m f) => (assertions
+        (util/report-warning! m f) => (assertions
                                          "logs warnings about binding overlaps"
                                          (str/includes? m "#{a} are bound AND used") => true)
         (tr/process-form e f) => f
@@ -83,7 +83,7 @@
                             ([] body))]
       (when-mocking!
         (tr/process-form e f) => f
-        (util/compile-warning! m f)
+        (util/report-warning! m f)
         =1x=> (do
                 (assertions
                   "warns about aliasing raw syms"
