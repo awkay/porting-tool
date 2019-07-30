@@ -1,4 +1,4 @@
-(ns com.fulcrologic.porting.main
+(ns com.fulcrologic.porting.core
   (:require
     [com.fulcrologic.porting.specs :as pspec]
     [ghostwheel.core :refer [>defn =>]]
@@ -66,6 +66,7 @@
     (do-processing-passes processing-env cljc-forms)))
 
 (>defn process-file
+  "Process a clj/cljs/cljc file using the given config."
   [filename config]
   [string? ::pspec/config => any?]
   (binding [util/*current-file*        filename

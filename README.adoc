@@ -1,8 +1,7 @@
 == Porting Tool
 
-This is a small library that can parse clj/cljs/cljc files and apply transforms. It is not a full interpreter for
-Clojure, so it has limited understanding of the source, but it does understand namespaces and aliasing
-so that you can do the most common operations necessary for custom source refactorings.
+This is a small library that can parse clj/cljs/cljc files and apply transforms.
+It is not a full interpreter for Clojure, so it has limited understanding of the source, but it does understand namespaces and aliasing so that you can do the most common operations necessary for custom source refactorings.
 
 The following transforms are supplied, but it is also easy to write you own:
 
@@ -13,39 +12,47 @@ The tool supports CLJ, CLJS, and CLJC files with conditional reads.
 
 === Intended Use
 
-The original motivation for this library is porting Fulcro 2 to Fulcro 3.  The new version of that library created
-new namespaces for all APIs, changed some semantics, and a few API signatures.  The projects that use Fulcro use
-CLJ, CLJS, and CLJC files, and there were no tools I could find that would make it easy to do what I wanted: write
-generic transforms against forms where the handling of some of the grunt work was handled for me.
+The original motivation for this library is porting Fulcro 2 to Fulcro 3.
+The new version of that library created new namespaces for all APIs, changed some semantics, and a few API signatures.
+The projects that use Fulcro use CLJ, CLJS, and CLJC files, and there were no tools I could find that would make it easy to do what I wanted: write generic transforms against forms where the handling of some of the grunt work was handled for me.
 
 This library is intended to:
 
 * Make it possible for you to work with clj/cljs/cljc in a seamless but separately configurable way.
 * Comprehend the namespaces in a file and provide you with that information so you can more easily write transforms.
-* Traverse the forms in a contextual way (automatically handling reader conditionals) so that you can concentrate
-on just the actual code transform.
+* Traverse the forms in a contextual way (automatically handling reader conditionals) so that you can concentrate on just the actual code transform.
 
-Ultimately this tools is just meant to be a very advanced form of `sed`:  Run through a file a "fix up"
-the code.
+Ultimately this tools is just meant to be a very advanced form of `sed`:
+Run through a file a "fix up" the code.
 
-If you're doing refactoring on your own source, and you're just working on CLJ and using emacs you should have a
-look at `clj-refactor`.  It does a number of refactorings that may be sufficient, but it doesn't support
-CLJS/CLJC (https://github.com/clojure-emacs/refactor-nrepl/issues/195).
+If you're doing refactoring on your own source, and you're just working on CLJ and using emacs you should have a look at `clj-refactor`.
+It does a number of refactorings that may be sufficient, but it doesn't support CLJS/CLJC (https://github.com/clojure-emacs/refactor-nrepl/issues/195).
 
-IntelliJ has a few minor refactorings that are more powerful for the specific things that they do (e.g. renaming
-a namespaced keyword), since that tool does try to comprehend your source code in a more complete manner.
+IntelliJ has a few minor refactorings that are more powerful for the specific things that they do (e.g. renaming a namespaced keyword), since that tool does try to comprehend your source code in a more complete manner.
 
 == Usage
 
 Clone the project or add a git SHA of the latest commit to your `deps.edn` file.
 
-Expanded usage will be coming soon...
+Then code a simple project file that can run the processing on files of your choice:
+
+```
+(ns my-porting-tool
+  (:require
+    [com.fulcrologic.porting.core :refer [process-file]]))
+
+(defn config {...}) ; see below
+
+(process-file "sample.cljc" config)
+```
+
+At the moment this will output to `*out*` (stdout by default) using `println`
+and `pprint`.
 
 === Configuration
 
-You must supply a configuration that describes what you want done to the file(s) that are processed. You must understand
-that the tool needs to know configuration for each feature (language) that will be affected, so the configuration
-file has a section for each:
+You must supply a configuration that describes what you want done to the file(s) that are processed.
+You must understand that the tool needs to know configuration for each feature (language) that will be affected, so the configuration file has a section for each:
 
 ```
 {:clj {:transforms       [...]
@@ -56,23 +63,22 @@ file has a section for each:
                           'com.fulcrologic.fulcro.dom-server 'dom}}
 ```
 
-The `:transforms` is a vector of tuples `[predicate transform]` that are to be performed. The rest of the keys in the
-config are dictated by these transforms, but many of them can create new requires in the file.  The
+The `:transforms` is a vector of tuples `[predicate transform]` that are to be performed.
+The rest of the keys in the config are dictated by these transforms, but many of them can create new requires in the file.
+The
 `:namespace->alias` map indicates what alias is preferred for new namespaces.
 
-The `:let-forms` and `defn-forms` tell the tool what macros you have that should be seen as let-like or defn-like things,
-so that potential shadowing and renaming problems can be properly detected. The tool has a built-in list of these, so
-you only need to configure them if you have extra ones (and the defaults are always merged into whatever you configure).
+The `:let-forms` and `defn-forms` tell the tool what macros you have that should be seen as let-like or defn-like things, so that potential shadowing and renaming problems can be properly detected.
+The tool has a built-in list of these, so you only need to configure them if you have extra ones (and the defaults are always merged into whatever you configure).
 
 ==== CLJC
 
-Working with CLJC files is a bit more work. A CLJC file (for our purposes) really is three things in one: forms for
-*just* CLJ, forms for *just* CLJS, and forms that are "language agnostic".
+Working with CLJC files is a bit more work.
+A CLJC file (for our purposes) really is three things in one: forms for *just* CLJ, forms for *just* CLJS, and forms that are "language agnostic".
 
-When a transform is given a form it will also be told the "feature context". The transform will use that to figure
-out which of the configurations to apply to the form it is working on. The feature contexts are `:clj`, `cljs`,
-and `:agnostic`; therefore, a configuration for a CLJC transform will
-commonly look something like this:
+When a transform is given a form it will also be told the "feature context".
+The transform will use that to figure out which of the configurations to apply to the form it is working on.
+The feature contexts are `:clj`, `cljs`, and `:agnostic`; therefore, a configuration for a CLJC transform will commonly look something like this:
 
 ```
 (let [base {:fqname-old->new  {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc
@@ -89,54 +95,53 @@ commonly look something like this:
     ...)
 ```
 
-NOTE: the `:transforms` themselves must be configured for each feature of a file, since some transforms may only make
-sense for a given aspect of the file.
+NOTE: the `:transforms` themselves must be configured for each feature of a file, since some transforms may only make sense for a given aspect of the file.
 
 == Transforms
 
-This library's implementation provides the core tools: namespace comprehension and traversal of forms in a language
-feature-sensitive manner. This makes is easy to write transforms.
+This library's implementation provides the core tools: namespace comprehension and traversal of forms in a language feature-sensitive manner.
+This makes is easy to write transforms.
 
-It is important to understand that this tool is *not* a global refactoring tool that could actually move an artifact
-from one disk file to another. It is local transforms on *one file at a time* where you can indicate changes you'd like
-to make to the *forms* within that file.
+It is important to understand that this tool is *not* a global refactoring tool that could actually move an artifact from one disk file to another.
+It is local transforms on *one file at a time* where you can indicate changes you'd like to make to the *forms* within that file.
 
-As such, when we speak of a "rename" we are almost always referring to the "global name" of some artifact (e.g.
-its fully-qualified name).
+As such, when we speak of a "rename" we are almost always referring to the "global name" of some artifact (e.g. its fully-qualified name).
 
 === How the Processing Works
 
 The processing of a file is done in two phases:
 
-- Phase 1: All forms are traversed. All transforms are invoked. A processing environment (`env`)  is passed to
-transforms and will include a `:state-atom` holding a map
-that transforms can use to "save information" about the things they see.  This is useful for doing things like gathering up a list of
-namespaces that are used so that the namespace form can be fixed on the second pass.
-- Phase 2: Identical to 1 except the `env` now includes `:state`, which is cumulative result of what was in the `:state-atom` at
-then end of phase 1.
+- Phase 1:
+All forms are traversed.
+All transforms are invoked.
+A processing environment (`env`) is passed to transforms and will include a `:state-atom` holding a map that transforms can use to "save information" about the things they see.
+This is useful for doing things like gathering up a list of namespaces that are used so that the namespace form can be fixed on the second pass.
+- Phase 2:
+Identical to 1 except the `env` now includes `:state`, which is cumulative result of what was in the `:state-atom` at then end of phase 1.
 
 Each phase does the same steps (some of which have multiple passes):
 
 * Analyzes the ns form for each feature (e.g. :clj, :cljs, etc) that is necessary for the file.
-It records what namespaces are required in the file, and what symbols are referred (aliased
-to simple symbols). The result of this step becomes the *parsing environment*.
+It records what namespaces are required in the file, and what symbols are referred (aliased to simple symbols).
+The result of this step becomes the *parsing environment*.
 * Forms are traversed recursively, but in a "context sensitive" manner (one pass for each feature of the file).
-Transforms only see forms for the a single feature context at a time.  For example if the source had `#?(:clj a :cljs b)`
-and you were in the `:clj` context, the
-transform function would only see `a`, and whatever it returned would only *affect* the CLJ side of the reader conditional.
+Transforms only see forms for the a single feature context at a time.
+For example if the source had `#?(:clj a :cljs b)`
+and you were in the `:clj` context, the transform function would only see `a`, and whatever it returned would only *affect* the CLJ side of the reader conditional.
 The `:agnostic` feature pass *skips* reader conditionals altogether.
-** `let`-like and `defn`-like forms are analyzed for possible naming confusion, and are used to modify the parsing
-environment and issue warnings. Any local symbol bindings will remove conflicting namespace `refer`s, but since
+** `let`-like and `defn`-like forms are analyzed for possible naming confusion, and are used to modify the parsing environment and issue warnings.
+Any local symbol bindings will remove conflicting namespace `refer`s, but since
 code comprehension is not part of this library's purpose it will just issue warnings when that might result in
 a problem with the output.
-* Each form is passed to each transform's predicate. If that predicate returns `true`, then the form is passed to the
-transforms transform function.  The result of that function becomes the new form for further processing. Transforms
-are applied in order.
+* Each form is passed to each transform's predicate.
+If that predicate returns `true`, then the form is passed to the transforms transform function.
+The result of that function becomes the new form for further processing.
+Transforms are applied in order.
 
-NOTE: CLJC files require some care. The :clj, :cljs, *and* :agnostic feature passes will see the same (non-conditional) form.
-Ideally, only the agnostic transform would be configured to respond for that form (or all feature configs would be
-configured identically for it).  A transform *is allowed* to output a `clojure.lang.ReaderConditional`, which means
-a transform could convert something from language agnostic to conditional.
+NOTE: CLJC files require some care.
+The :clj, :cljs, *and* :agnostic feature passes will see the same (non-conditional) form.
+Ideally, only the agnostic transform would be configured to respond for that form (or all feature configs would be configured identically for it).
+A transform *is allowed* to output a `clojure.lang.ReaderConditional`, which means a transform could convert something from language agnostic to conditional.
 
 === The Transform `env`
 
@@ -148,19 +153,22 @@ Your transform processing `env` will include a number of useful things:
 `:current-ns`:: The name of ns of the file being processed.
 
 Each `parsing-env` will include feature-specific details of the namespace:
-`:nsalias->ns`:: A map from namespace aliases to the real namespace (from the `:as` clauses in the requires). If
-there is no alias for a ns it will still be listed as itself.
-`:ns->alias`:: A reverse of from ns to its alias. All nses are included (e.g. no alias will have same k as v).
+`:nsalias->ns`:: A map from namespace aliases to the real namespace (from the `:as` clauses in the requires).
+If there is no alias for a ns it will still be listed as itself.
+`:ns->alias`:: A reverse of from ns to its alias.
+All nses are included (e.g. no alias will have same k as v).
 `:raw-sym->fqsym`:: A map from raw symbols to their fully-qualified name (from the `:refer` clauses in the requires)
 
 Note that the form passed to the transform will also have (recursively) line/column metadata.
 
 === Reporting Problems
 
-Sometimes there is no transform possible and you just need to inform the user that there is a problem. The
+Sometimes there is no transform possible and you just need to inform the user that there is a problem.
+The
 `com.fulcrologic.porting.parsing.util/report-warning!` and
-`com.fulcrologic.porting.parsing.util/report-error!` functions should be used for this. The latter throws an exception
-to halt processing.  They will include the file and line for you as a prefix to your message.
+`com.fulcrologic.porting.parsing.util/report-error!` functions should be used for this.
+The latter throws an exception to halt processing.
+They will include the file and line for you as a prefix to your message.
 
 === Writing Your Own Transform
 
@@ -204,16 +212,14 @@ See the docstring of `com.fulcrologic.porting.transforms.rename/add-missing-name
 
 === Renaming Namespaces
 
-Sometimes the only real change is that of the namespace itself. You could (tediously) list out every single
-function from the old to the new namespace in the artifact renaming, but in the case of a simple namespace
-rename this is overkill.
+Sometimes the only real change is that of the namespace itself.
+You could (tediously) list out every single function from the old to the new namespace in the artifact renaming, but in the case of a simple namespace rename this is overkill.
 
 See the docstring of `com.fulcrologic.porting.transforms.rename/rename-namespaces-transform` for usage.
 
 == Limitations
 
 This library is *not* a full compiler, and as such it cannot possibly comprehend your code.
-Clojure(script) macros can create bindings that *should* shadow namespace aliases, but this library has limited
-support for figuring out when shadowing is happening.
+Clojure(script) macros can create bindings that *should* shadow namespace aliases, but this library has limited support for figuring out when shadowing is happening.
 
 If you have a macro that behaves like `defn` or `let` you should configure it as described above.
