@@ -2,10 +2,12 @@
   (:use
     [clojure.java.ui])
   (:require
-    #? (:clj [clojure.edn :as edn :refer [f g h]] :cljs [boo :as bah])
+    [clojure.edn :as edn :refer [f g h]]
     [clojure.java.io :as io :refer :all]))
 
-#?(:clj 1 :cljs 2)
-(io/make-input-stream)
+(defn some-function [arg]
+  (f)
+  (edn/read-string "" {})
+  (map g []))
 
-(edn/read)
+

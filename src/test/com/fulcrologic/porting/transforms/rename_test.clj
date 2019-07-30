@@ -9,7 +9,7 @@
   (component "predicate"
     (assertions
       "detects symbols"
-      (= symbol? (first rename/rename-transform)) => true))
+      (= symbol? (first rename/rename-artifacts-transform)) => true))
   (component "Transform"
     (let [env   (util/processing-env
                   {:feature-context :clj
@@ -28,7 +28,7 @@
 
                                                               'com.a/a
                                                               'com.b/a}}}})
-          xform (second rename/rename-transform)]
+          xform (second rename/rename-artifacts-transform)]
       (assertions
         "Remaps fq symbols"
         (xform env 'fulcro.client.primitives/defsc) => 'comp/defsc

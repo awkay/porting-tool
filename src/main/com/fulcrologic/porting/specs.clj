@@ -5,7 +5,7 @@
     [clojure.spec.gen.alpha :as gen]
     [clojure.spec.alpha :as s]))
 
-(s/def ::feature #{:clj :cljs :agnostic})
+(s/def ::feature #{:clj :cljs :agnostic :none})
 
 (s/def ::namespace (s/with-gen simple-symbol? #(s/gen '#{com.company.thing other.thing some.thing clojure.core cljs.test})))
 (s/def ::artifact-name (s/with-gen qualified-symbol? #(s/gen '#{com.company.thing/grapple other.thing/log some.thing/boo clojure.core/reduce cljs.test/deftest})))
@@ -32,7 +32,7 @@
 (s/def ::feature-context ::feature)
 
 (s/def ::transform-function (s/fspec
-                              :args (s/cat :env ::env :form any?)
+                              :args (s/cat :env ::processing-env :form any?)
                               :ret any?
                               :gen #(s/gen #{(fn xform [e f] f)})))
 
@@ -47,6 +47,7 @@
                                 ::transforms]))
 
 (s/def ::config (s/map-of ::feature ::lang-config))
+(s/def ::current-ns ::namespace)
 
 (s/def ::processing-env (s/keys
                           :req-un [::parsing-envs

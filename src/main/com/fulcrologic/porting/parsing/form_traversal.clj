@@ -81,12 +81,13 @@
         p          (partial process-form env)
         form       (reduce
                      (fn [f [predicate xform]]
-                       (if (predicate f)
+                       (if (predicate env f)
                          (xform env f)
                          f))
                      form
                      transforms)]
     (cond
+      (and (list? form) (= 'ns (first form))) form
       (list? form) (with-meta (process-list env form) (meta form))
       (vector? form) (with-meta (mapv p form) (meta form))
       (map? form) (with-meta (into {}
