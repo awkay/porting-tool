@@ -87,10 +87,10 @@
   has been aliased from some other ns; otherwise returns the original symbol."
   [env sym]
   [::pspec/processing-env symbol? => symbol? | #(or (qualified-symbol? %) (= % sym))]
-  (let [feature         (log/spy :info (:feature-context env))
-        {:keys [nsalias->ns raw-sym->fqsym]} (log/spy :info (get-in env [:parsing-envs feature]))
-        potential-alias (some-> (log/spy :info sym) namespace symbol)
-        real-ns         (get nsalias->ns (log/spy :info potential-alias))
+  (let [feature         (:feature-context env)
+        {:keys [nsalias->ns raw-sym->fqsym]} (get-in env [:parsing-envs feature])
+        potential-alias (some-> sym namespace symbol)
+        real-ns         (get nsalias->ns potential-alias)
         fqsym           (if real-ns
                           (symbol (name real-ns) (name sym))
                           (get raw-sym->fqsym sym sym))]
