@@ -11,7 +11,9 @@
     [com.fulcrologic.porting.parsing.form-traversal :as ft]
     [com.fulcrologic.porting.parsing.namespace-parser :as nsparser]
     [com.fulcrologic.porting.parsing.util :as util]
-    [clojure.pprint :as pprint]))
+    [clojure.pprint :as pprint]
+    [clojure.tools.reader :as reader]
+    [clojure.tools.reader.impl.errors :as err]))
 
 (defn do-processing-passes [processing-env forms]
   (let [state         (atom {})
@@ -81,7 +83,14 @@
 
 (def pprint-array (pprint/formatter-out "~<[~;~@{~w~^, ~:_~}~;]~:>"))
 
+(defn read-tagged [rdr initch opts pending-forms]
+  (let [tag (#'reader/read* rdr true nil opts pending-forms)]
+    (if-not (symbol? tag)
+      (err/throw-bad-reader-tag rdr tag))
+    (tagged-literal tag (#'reader/read* rdr true nil opts pending-forms))))
+
 (defn mess-around-with-other-peoples-crap! []
+  (alter-var-root #'clojure.tools.reader/read-tagged (constantly read-tagged))
   (alter-var-root #'clojure.tools.reader/read-syntax-quote (constantly (fn [r b o p]
                                                                          (vary-meta
                                                                            (#'clojure.tools.reader/read* r true nil o p)

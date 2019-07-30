@@ -6,9 +6,17 @@
     #?(:cljs [fulcro.client.dom :as dom]
        :clj  [fulcro.client.dom-server :as dom])))
 
+(comment
+  "hello")
+
+;; comment
 (m/defmutation some-mutation [params]
-  (action [{:keys [reconciler state] :as env}]
+  (action [{:keys [reconciler state] :as env}] ; comment 2
     (df/load-action env :root nil)
+    \a
+    'b
+    @state
+    #js {:a 1}
     #?(:cljs (js/setTimeout
                (fn []
                  (prim/transact! reconciler `[(f ~params)]))))
