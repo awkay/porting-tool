@@ -12,6 +12,27 @@
     [com.fulcrologic.porting.parsing.namespace-parser :as nsparser]
     [com.fulcrologic.porting.parsing.util :as util]))
 
+(defn do-processing-passes [processing-env forms]
+  (let [state         (atom {})
+        ;; PASS 1: You have access to a state-atom that you can swap! against to record information
+        _             (reduce
+                        (fn [result f]
+                          (conj result (ft/process-form
+                                         (assoc processing-env
+                                           :pass 1
+                                           :state-atom state) f)))
+                        []
+                        forms)
+        ;; PASS 2: You have the *value* as :state of the previous pass's information
+        updated-forms (reduce
+                        (fn [result f]
+                          (conj result (ft/process-form (assoc processing-env
+                                                          :pass 2
+                                                          :state @state) f)))
+                        []
+                        forms)]
+    updated-forms))
+
 (>defn process-single
   [filename config lang]
   [string? ::pspec/config #{:clj :cljs} => any?]
@@ -20,13 +41,8 @@
         parsing-env    (nsparser/parse-namespace {} nsform)
         processing-env (util/processing-env {:parsing-envs    {lang parsing-env}
                                              :config          config
-                                             :feature-context lang})
-        updated-forms  (reduce
-                         (fn [result f]
-                           (conj result (ft/process-form processing-env f)))
-                         []
-                         forms)]
-    updated-forms))
+                                             :feature-context lang})]
+    (do-processing-passes processing-env forms)))
 
 
 (>defn process-cljc
@@ -46,13 +62,8 @@
                                                                    :agnostic common-parsing-env
                                                                    :cljs     cljs-parsing-env}
                                                  :config          config
-                                                 :feature-context :agnostic})
-        output-forms       (reduce
-                             (fn [result f]
-                               (conj result (ft/process-form processing-env f)))
-                             []
-                             cljc-forms)]
-    output-forms))
+                                                 :feature-context :agnostic})]
+    (do-processing-passes processing-env cljc-forms)))
 
 (>defn process-file
   [filename config]
@@ -82,7 +93,9 @@
 
   (let [base {:fqname-old->new  {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc
                                  'fulcro.client.primitives/get-computed 'com.fulcrologic.fulcro.components/get-computed}
-              :transforms       [rename/rename-artifacts-transform rename/rename-namespaces-transform]
+              :transforms       [rename/rename-artifacts-transform
+                                 rename/rename-namespaces-transform
+                                 rename/add-missing-namespaces-transform]
               :namespace->alias {'com.fulcrologic.fulcro.components 'comp
                                  'com.fulcrologic.fulcro.dom        'dom
                                  'com.fulcrologic.fulcro.dom-server 'dom}}]

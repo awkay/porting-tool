@@ -22,7 +22,9 @@
     (if-let [new-fqname (get fqname-old->new sym)]
       (enc/if-let [full-namespace (some-> new-fqname namespace symbol)
                    desired-alias  (get namespace->alias full-namespace full-namespace)]
-        (do
+        (let [{:keys [state-atom]} env]
+          (when state-atom
+            (swap! state-atom update-in [::namespaces-needed feature] (fnil conj #{}) full-namespace))
           (when-let [alt-ns (get nsalias->ns desired-alias)]
             (when (not= alt-ns full-namespace)
               (util/compile-error!
@@ -55,7 +57,7 @@
   "
   [(fn [{::keys [in-ns?]} s] (and (not in-ns?) (symbol? s))) rename-symbol])
 
-(defn is-namespace-form? [{::keys [in-ns?]} f]
+(defn rename-nses-predicate? [{::keys [in-ns?]} f]
   (or
     (and in-ns? (simple-symbol? f))
     (and (list? f) (= 'ns (first f)))))
@@ -83,4 +85,31 @@
 
   NOTE: All other aspects of the namespace (e.g. refer/as) will be unchanged.
   "
-  [is-namespace-form? rename-namespaces])
+  [rename-nses-predicate? rename-namespaces])
+
+(defn add-nses-predicate [env form] (and (list? form) (= 'ns (first form))))
+
+(defn add-missing-namespaces [{:keys [state] :as env} form]
+  (let [{::keys [namespaces-needed]} state
+        feature  (:feature-context env)
+        nses     (get namespaces-needed feature)
+        {:keys [nsalias->ns]} (get-in env [:parsing-envs feature])
+        {:keys [namespace->alias]} (get-in env [:config feature])
+        elements (reduce
+                   (fn [result ns]
+                     (cond-> [ns]
+                       (get namespace->alias ns) (conj :as (namespace->alias ns))))
+                   []
+                   nses)]
+    (walk/prewalk
+      (fn [ele]
+        (if (and (sequential? ele) (= :require (first ele)))
+          (apply list :require (into [elements] (rest ele)))
+          ele))
+      form)))
+
+(def add-missing-namespaces-transform
+  "Adds missing namespaces with desired alias to the ns form.
+
+   Requires you are also using the rename-artifacts transform, which gathers the list of necessary namespaces."
+  [add-nses-predicate add-missing-namespaces])

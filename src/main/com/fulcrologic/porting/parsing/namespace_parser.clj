@@ -35,11 +35,10 @@
         (compile-warning! "Porting tool does not support :refer :all. Please refer your symbols."))
       (cond-> env
         as (assoc-in [:nsalias->ns as] lib)
+        as (assoc-in [:ns->alias lib] as)
+        (not as) (assoc-in [:nsalias->ns lib] lib)
+        (not as) (assoc-in [:ns->alias lib] lib)
         syms (add-sym-aliases syms)))))
-
-#_[:prefix-list {:prefix   com.fulcrologic.fulcro,
-                 :libspecs [[:lib+opts {:lib component, :options {:as comp}}]
-                            [:lib+opts {:lib application, :options {:as app}}]]}]
 
 (>defn- extract-prefixes [env {:keys [prefix libspecs]}]
   [::pspec/parsing-env (s/keys :opt-un [::prefix ::libspecs])
