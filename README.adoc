@@ -32,7 +32,12 @@ IntelliJ has a few minor refactorings that are more powerful for the specific th
 
 == Usage
 
-Clone the project or add a git SHA of the latest commit to your `deps.edn` file.
+Add the lastest git SHA to your `deps.edn` file.
+
+```
+com.fulcrologic/porting-tool {:git/url "https://github.com/fulcrologic/porting-tool.git"
+                              :sha "1d58d2d89f1704a29828fedc0f0d2be2f1573f55"}}}
+```
 
 Then code a simple project file that can run the processing on files of your choice:
 
