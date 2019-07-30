@@ -10,7 +10,8 @@
     [com.fulcrologic.porting.specs :as pspec]
     [com.fulcrologic.porting.parsing.form-traversal :as ft]
     [com.fulcrologic.porting.parsing.namespace-parser :as nsparser]
-    [com.fulcrologic.porting.parsing.util :as util]))
+    [com.fulcrologic.porting.parsing.util :as util]
+    [clojure.pprint :as pprint]))
 
 (defn do-processing-passes [processing-env forms]
   (let [state         (atom {})
@@ -65,10 +66,49 @@
                                                  :feature-context :agnostic})]
     (do-processing-passes processing-env cljc-forms)))
 
+(defn pprint-vector [avec]
+  (when (::syntax-quoted? (meta avec))
+    (print "`"))
+  (pprint/pprint-logical-block :prefix "[" :suffix "]"
+    (pprint/print-length-loop [aseq (seq avec)]
+      (when aseq
+        (pprint/write-out (first aseq))
+        (when (next aseq)
+          (.write ^java.io.Writer *out* " ")
+          (pprint/pprint-newline :linear)
+          (recur (next aseq)))))))
+
+
+(def pprint-array (pprint/formatter-out "~<[~;~@{~w~^, ~:_~}~;]~:>"))
+
+(defn mess-around-with-other-peoples-crap! []
+  (alter-var-root #'clojure.tools.reader/read-syntax-quote (constantly (fn [r b o p]
+                                                                         (vary-meta
+                                                                           (#'clojure.tools.reader/read* r true nil o p)
+                                                                           assoc ::syntax-quoted? true))))
+
+  (defmethod pprint/code-dispatch clojure.lang.IPersistentVector [v]
+    (pprint-vector v))
+
+  (defmethod pprint/code-dispatch clojure.lang.ReaderConditional [{:keys [form splicing?]}]
+    (pprint/write-out (if splicing? (symbol "#?@") (symbol "#?")))
+    (pprint/pprint-logical-block :prefix "(" :suffix ")"
+      (let [forms (partition 2 form)]
+        (loop [fs (seq forms)]
+          (when fs
+            (let [[feature form] (first fs)]
+              (pprint/write-out feature)
+              (.write ^java.io.Writer *out* " ")
+              (pprint/write-out form)
+              (when (next fs)
+                (pprint/pprint-newline :linear)
+                (recur (next fs))))))))))
+
 (>defn process-file
   "Process a clj/cljs/cljc file using the given config."
   [filename config]
   [string? ::pspec/config => any?]
+  (mess-around-with-other-peoples-crap!)
   (binding [util/*current-file*        filename
             pp/*print-pprint-dispatch* pp/code-dispatch]
     (try
@@ -92,15 +132,19 @@
                                                                    'my-reader 'r}}})
 
 
-  (let [base {:fqname-old->new  {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc
-                                 'fulcro.client.primitives/get-computed 'com.fulcrologic.fulcro.components/get-computed}
-              :transforms       [rename/rename-artifacts-transform
-                                 rename/rename-namespaces-transform
-                                 rename/add-missing-namespaces-transform]
-              :namespace->alias {'com.fulcrologic.fulcro.components 'comp
-                                 'com.fulcrologic.fulcro.dom        'dom
-                                 'com.fulcrologic.fulcro.dom-server 'dom}}
+  (let [base   {:fqname-old->new    {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc
+                                     'fulcro.client.primitives/get-computed 'com.fulcrologic.fulcro.components/get-computed}
+                :namespace-old->new {'fulcro.client.data-fetch 'com.fulcrologic.fulcro.data-fetch
+                                     'fulcro.client.mutations  'com.fulcrologic.fulcro.mutations}
+                :transforms         [rename/rename-artifacts-transform
+                                     rename/rename-namespaces-transform
+                                     rename/add-missing-namespaces-transform]
+                :namespace->alias   {'com.fulcrologic.fulcro.components 'comp
+                                     'com.fulcrologic.fulcro.data-fetch 'df
+                                     'com.fulcrologic.fulcro.mutations  'm
+                                     'com.fulcrologic.fulcro.dom        'dom
+                                     'com.fulcrologic.fulcro.dom-server 'dom}}
         config {:agnostic base
                 :cljs     (merge base {:namespace-old->new {'fulcro.client.dom 'com.fulcrologic.fulcro.dom}})
                 :clj      (merge base {:namespace-old->new {'fulcro.client.dom-server 'com.fulcrologic.fulcro.dom-server}})}]
-    ))
+    (process-file "./resources/trial.cljc" config)))

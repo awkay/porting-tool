@@ -25,9 +25,9 @@
         rebound-globals    (set/intersection hazardous-bindings aliased-symbols)]
     (when-let [problems (seq rebound-globals)]
       (util/report-warning! (str "The global aliased symbol(s) " (set problems)
-                               " are bound AND used as values in the same let.\n\n"
-                               "FIX: Refactor your the code to use only "
-                               "qualified symbols from other namespaces in the values of the bindings.") l))
+                              " are bound AND used as values in the same let.\n\n"
+                              "FIX: Refactor your the code to use only "
+                              "qualified symbols from other namespaces in the values of the bindings.") l))
     (apply list (map #(process-form env %) l))))
 
 (>defn process-defn [env l]
@@ -86,13 +86,17 @@
   (let [feature    (:feature-context env)
         transforms (get-in env [:config feature :transforms])
         p          (partial process-form env)
+        old-meta   (meta form)
         form       (reduce
                      (fn [f [predicate xform]]
                        (if (predicate env f)
                          (xform env f)
                          f))
                      form
-                     transforms)]
+                     transforms)
+        form (if old-meta
+               (with-meta form old-meta)
+               form)]
     (cond
       (and (list? form) (= 'ns (first form))) form
       (list? form) (with-meta (process-list env form) (meta form))
