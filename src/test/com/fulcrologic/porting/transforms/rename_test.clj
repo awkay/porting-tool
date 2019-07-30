@@ -8,8 +8,10 @@
 (specification "rename transform"
   (component "predicate"
     (assertions
+      "avoids when running in ns form"
+      ((first rename/rename-artifacts-transform) {::rename/in-ns? true} '(ns ...)) => false
       "detects symbols"
-      (= symbol? (first rename/rename-artifacts-transform)) => true))
+      ((first rename/rename-artifacts-transform) {} 'sym) => true))
   (component "Transform"
     (let [env   (util/processing-env
                   {:feature-context :clj
@@ -40,6 +42,6 @@
 
       (when-mocking
         (util/report-error! m f) => (assertions
-                                       "issues an error if there is a conflicting alias already in the file's ns"
-                                       (str/includes? m "has namespace alias `thing`, but it refers to `other.ns`") => true)
+                                      "issues an error if there is a conflicting alias already in the file's ns"
+                                      (str/includes? m "has namespace alias `thing`, but it refers to `other.ns`") => true)
         (xform env 'com.a/x)))))
