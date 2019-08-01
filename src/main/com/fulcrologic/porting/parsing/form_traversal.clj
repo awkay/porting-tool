@@ -30,44 +30,6 @@
 
 (declare process-form)
 
-#_(defn process-let [env l]
-    [::pspec/processing-env ::pspec/let-like => ::let-like]
-    (let [bindings           (second l)
-          hazardous-bindings (into #{} (comp
-                                         (map second)
-                                         (filter simple-symbol?))
-                               (partition 2 bindings))
-          aliased-symbols    (util/raw-globals env)
-          parsed-bindings    (s/conform ::specs/bindings bindings)
-          local-syms         (util/all-syms parsed-bindings)
-          env                (clear-raw-syms env local-syms)
-          rebound-globals    (set/intersection hazardous-bindings aliased-symbols)]
-      (when-let [problems (seq rebound-globals)]
-        (util/report-warning! (str "The global aliased symbol(s) " (set problems)
-                                " are bound AND used as values in the same let.\n\n"
-                                "FIX: Refactor your the code to use only "
-                                "qualified symbols from other namespaces in the values of the bindings.") l))
-      (apply list (map #(process-form env %) l))))
-
-#_(>defn process-defn [env l]
-    [::pspec/processing-env ::pspec/defn-like => ::pspec/defn-like]
-    (let [args            (rest l)
-          syms            (util/all-syms args)
-          aliased-symbols (util/raw-globals env)
-          env             (clear-raw-syms env syms)
-          rebound-globals (set/intersection syms aliased-symbols)]
-      (when (seq rebound-globals)
-        (util/report-warning!
-          (str "Function creates symbols in args that have been aliased to simple symbol(s) in the namespace: " rebound-globals
-            " This can cause incorrect rewrites.\n\n"
-            "FIX: Rewrite the function's argument list so that it does not shadow "
-            "other simple symbols from namespace aliasing.") l))
-      (apply list (map #(process-form env %) l))))
-
-(def known-let-forms #{'let 'if-let 'when-let 'binding 'taoensso.encore/if-let 'taoensso.encore/when-let})
-
-(def known-defn-forms #{'defn 'defn- 'ghostwheel.core/>defn 'ghostwheel.core/>defn-})
-
 (defn process-sequence
   "Assuming that env is on a sequence of things, walk that sequence calling process-form for each element."
   [env]
@@ -86,18 +48,64 @@
           (update e :zloc z/up)))
       env)))
 
+(defn process-let [env]
+  [::pspec/processing-env => ::pspec/processing-env]
+  (let [let-like-form   (current-form env)
+        bindings        (partition 2 (second let-like-form))
+        destructurings  (into #{} (map first) bindings)
+        hazardous-uses  (into #{} (comp
+                                    (map second)
+                                    (filter simple-symbol?)) bindings)
+        aliased-symbols (util/raw-globals env)
+        local-syms      (util/all-symbol-names destructurings)
+        cleared-env     (clear-raw-syms env local-syms)
+        rebound-globals (set/intersection local-syms aliased-symbols)]
+    (when-let [problems (seq (set/intersection hazardous-uses aliased-symbols))]
+      (util/report-warning! (str "The global aliased symbol(s) " (set problems)
+                              " are bound AND used as values in a let. This can lead to shadowing issues.\n\n"
+                              "FIX: Refactor your the code to use "
+                              "qualified symbols (i.e. :as in :require).") let-like-form))
+    (when-let [problems (seq rebound-globals)]
+      (util/report-warning! (str "The global aliased symbol(s) " (set problems)
+                              " are bound in the namespace AND the let.\n\n"
+                              "FIX: Refactor your the code to use "
+                              "qualified symbols (i.e. :as in :require).") let-like-form))
+    (let [updated-loc (:zloc (process-sequence cleared-env))]
+      (assoc env :zloc updated-loc))))
+
+(>defn process-defn [env]
+  [::pspec/processing-env => ::pspec/processing-env]
+  (let [defn-like-form  (current-form env)
+        args            (rest defn-like-form)
+        arg-symbols     (util/all-symbol-names args)
+        aliased-symbols (util/raw-globals env)
+        cleared-env     (clear-raw-syms env arg-symbols)
+        rebound-globals (set/intersection arg-symbols aliased-symbols)]
+    (when (seq rebound-globals)
+      (util/report-warning!
+        (str "Function creates symbols in its args that have been aliased to simple symbol(s) in the namespace: " rebound-globals
+          " This can cause incorrect rewrites.\n\n"
+          "FIX: Add aliases for the affected namespaces and use qualified versions of the globally aliased thing.")
+        defn-like-form))
+    (let [updated-loc (:zloc (process-sequence cleared-env))]
+      (assoc env :zloc updated-loc))))
+
+(def known-let-forms #{'let 'if-let 'when-let 'binding 'taoensso.encore/if-let 'taoensso.encore/when-let})
+
+(def known-defn-forms #{'defn 'defn- 'ghostwheel.core/>defn 'ghostwheel.core/>defn-})
+
 (>defn process-list [env]
   [::pspec/processing-env => any?]
-  (let [feature (:feature-context env)
-        l       (current-form env)
+  (let [feature                (:feature-context env)
+        possible-function-name (first (current-form env))
+        function-name          (cond->> possible-function-name
+                                 (symbol? possible-function-name) (util/sym->fqsym env))
         {:keys [let-forms defn-forms]} (-> (get-in env [:config feature])
                                          (update :let-forms set/union known-let-forms)
-                                         (update :defn-forms set/union known-defn-forms))
-        ;; TASK: resolve symbol!
-        f       (first l)]
+                                         (update :defn-forms set/union known-defn-forms))]
     (cond
-      ;(contains? let-forms f) (process-let env l)
-      ;(contains? defn-forms f) (process-defn env l)
+      (contains? let-forms function-name) (process-let env)
+      (contains? defn-forms function-name) (process-defn env)
       :else (process-sequence env))))
 
 (s/def ::reader-cond #(instance? ReaderConditional %))

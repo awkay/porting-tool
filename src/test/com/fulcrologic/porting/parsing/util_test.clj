@@ -54,20 +54,8 @@
         "can resolve fully-qualified smbols to a shorter version using feature context aliases"
         (util/require-for processing-env 'com.boo.sns) => '[com.boo.sns :as sns]))))
 
-(specification "bound-syms"
-  (behavior "finds symbol bindings from binding expressions"
-    (assertions
-      "can detect simple symbols"
-      (util/bound-syms 'a) => #{'a}
-      "can detect symbols in a vector destructure"
-      (util/bound-syms '[a b]) => #{'a 'b}
-      "can detect symbols in a vector destructure :as clause"
-      (util/bound-syms '[:as c]) => #{'c}
-      "can detect symbols in a map destructure's :keys"
-      (util/bound-syms '{:keys [a b]}) => #{'a 'b}
-      "can detect symbols in a map destructure's :or clause"
-      (util/bound-syms '{:keys [a b] :or {a s}}) => #{'a 'b 's}
-      "can detect symbols in a map destructure's :as clause"
-      (util/bound-syms '{:keys [a b] :as x}) => #{'a 'b 'x}
-      "can detect symbols in a map destructure's key area"
-      (util/bound-syms '{L :a}) => #{'L})))
+
+(specification "all-symbol-names"
+  (assertions
+    "Returns a set of simple symbols based on the symbols in any data structure"
+    (util/all-symbol-names {:a 'x 'a/b "asd" 22 {:f {:g {:h 'my.freaking/sym}}}}) => #{'x 'b 'sym}))

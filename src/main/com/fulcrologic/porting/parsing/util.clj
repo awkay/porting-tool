@@ -100,8 +100,6 @@
       fqsym
       sym)))
 
-
-
 (>defn require-for
   "Returns a clj require clause for the given namespace, including the alias, for the current processing
   context."
@@ -127,30 +125,21 @@
       keys
       set)))
 
-(>defn all-syms
-  "Recursively finds all simple symbols in form."
+(>defn all-symbol-names
+  "Recursively finds all symbols in form, return a set of them as their simple symbols.
+
+  ```
+  (all-symbol-names ['a 'b/c]) => #{a c}
+  ```
+  "
   [form]
   [any? => (s/every simple-symbol? :kind set?)]
   (let [syms (atom #{})]
     (walk/prewalk
       (fn [e]
-        (when (simple-symbol? e)
-          (swap! syms conj e))
+        (when (symbol? e)
+          (swap! syms conj (symbol (name e))))
         e)
       form)
     @syms))
 
-(>defn bound-syms
-  "Given a defn-like form: Finds all of the symbol bindings in the argument list(s) (even with destructuring)
-  and returns a set of those simple symbols."
-  [binding-form]
-  [::specs/binding-form => (s/every simple-symbol? :kind set?)]
-  (let [bindings (s/conform ::specs/binding-form binding-form)
-        syms     (atom #{})]
-    (walk/prewalk
-      (fn [e]
-        (when (symbol? e)
-          (swap! syms conj e))
-        e)
-      bindings)
-    @syms))
