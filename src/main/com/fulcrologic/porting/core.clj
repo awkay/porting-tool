@@ -5,6 +5,8 @@
     [clojure.pprint :as pp :refer [pprint]]
     [clojure.string :as str]
     [taoensso.timbre :as log]
+    [rewrite-clj.parser :as rw]
+    [rewrite-clj.zip :as z]
     [com.fulcrologic.porting.input :as input]
     [com.fulcrologic.porting.transforms.rename :as rename]
     [com.fulcrologic.porting.specs :as pspec]
@@ -91,10 +93,9 @@
 
 (defn mess-around-with-other-peoples-crap! []
   (alter-var-root #'clojure.tools.reader/read-tagged (constantly read-tagged))
-  (alter-var-root #'clojure.tools.reader/read-syntax-quote (constantly (fn [r b o p]
-                                                                         (vary-meta
-                                                                           (#'clojure.tools.reader/read* r true nil o p)
-                                                                           assoc ::syntax-quoted? true))))
+  (alter-var-root #'clojure.tools.reader/read-syntax-quote
+    (constantly (fn [r b o p]
+                  (vary-meta (#'clojure.tools.reader/read* r true nil o p) assoc ::syntax-quoted? true))))
 
   (defmethod pprint/code-dispatch clojure.lang.IPersistentVector [v]
     (pprint-vector v))
@@ -139,6 +140,11 @@
                                                 :namespace->alias {'com.boo   'boo
                                                                    'other.ns  'other
                                                                    'my-reader 'r}}})
+
+  (let [in (rw/parse-file-all "./resources/trial.cljc")
+        data (z/of-file "./resources/trial.cljc")]
+    (z/right (z/find-value data z/next 'ns))
+    )
 
 
   (let [base   {:fqname-old->new    {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc

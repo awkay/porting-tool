@@ -26,11 +26,13 @@
    (deep-merge
      {:parsing-envs    {}
       :config          {}
+      :zloc            {}
       :feature-context :agnostic}
      overrides))
   ([]
    [=> ::pspec/processing-env]
    {:parsing-envs    {}
+    :zloc            {}
     :config          {}
     :feature-context :agnostic}))
 

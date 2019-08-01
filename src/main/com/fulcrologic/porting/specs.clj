@@ -1,5 +1,6 @@
 (ns com.fulcrologic.porting.specs
   (:require
+    [rewrite-clj.zip :as z]
     [clojure.test.check.generators :as tcgen]
     [clojure.core.specs.alpha :as specs]
     [clojure.spec.gen.alpha :as gen]
@@ -18,7 +19,7 @@
 (s/def ::form-predicate (s/fspec
                           :args (s/cat :form any?)
                           :ret boolean?
-                          :gen #(s/gen #{(fn predicate [_] true)})))
+                          :gen #(s/gen #{(fn predicate [_] (rand-nth [true false]))})))
 
 (s/def ::nsalias->ns (s/map-of simple-symbol? ::namespace))
 (s/def ::ns->alias (s/map-of ::namespace simple-symbol?))
@@ -32,9 +33,10 @@
 (s/def ::feature-context ::feature)
 
 (s/def ::transform-function (s/fspec
-                              :args (s/cat :env ::processing-env :form any?)
+                              :args (s/cat :env map? :form any?)
                               :ret any?
                               :gen #(s/gen #{(fn xform [e f] f)})))
+
 
 (s/def ::let-forms (s/every symbol? :kind set?))
 (s/def ::defn-forms (s/every symbol? :kind set?))
@@ -53,10 +55,12 @@
 
 (s/def ::config (s/map-of ::feature ::lang-config))
 (s/def ::current-ns ::namespace)
+(s/def ::zloc (s/with-gen #(or (map? %) (vector? %)) #(s/gen #{(z/of-string "(list)")})))
 
 (s/def ::processing-env (s/keys
                           :req-un [::parsing-envs
                                    ::config
+                                   ::zloc
                                    ::feature-context]
                           :opt-un [::current-ns]))
 

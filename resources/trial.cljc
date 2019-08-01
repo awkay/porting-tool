@@ -11,12 +11,16 @@
 
 ;; comment
 (m/defmutation some-mutation [params]
-  (action [{:keys [reconciler state] :as env}] ; comment 2
+  (action [{:keys [reconciler state] :as env}]              ; comment 2
     (df/load-action env :root nil)
-    \a
-    'b
-    @state
-    #js {:a 1}
+    #(first %2)
+    #_abc
+    (#'some-specials
+      \a
+      'b
+      @state
+      #js {:a 1})
+
     #?(:cljs (js/setTimeout
                (fn []
                  (prim/transact! reconciler `[(f ~params)]))))
@@ -28,3 +32,4 @@
   (let [computed (prim/get-computed this)]
     (dom/div
       (dom/div "Hi"))))
+
