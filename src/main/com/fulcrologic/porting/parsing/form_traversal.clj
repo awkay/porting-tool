@@ -218,8 +218,7 @@
           {}))
       {})))
 
-;; TASK: This seems to be working, but I'm not sure how to apply it to just a ns form and get back the form
-(defn loc->form
+(defn loc->form*
   "Returns the form for the current position in the `env` with reader conditionals
    processed into their correct language side (or omitted). No transforms are
    applied during this conversion."
@@ -239,6 +238,14 @@
                             (z/remove cond-loc))]
           (recur new-loc))))))
 
+(defn loc->form
+  "Process any conditional reader macros against the current zipper location, and return the resulting
+  form as it would look for `lang`, which can be :clj, :cljs.  Any non-matching lang will remove
+  the conditional reader elements completely."
+  [loc lang]
+  (let [actual (z/edit-node loc #(loc->form* % lang))]
+    (z/sexpr actual)))
+
 (defn top [loc]
   (loop [pos loc]
     (if-let [p (z/up pos)]
@@ -248,7 +255,6 @@
 (comment
   (let [forms-zipper (z/of-string "(ns a (:require #?(:clj 1 :cljs 2)))\n(defn f [a] #?(:clj 42 :cljs 43))")
         ns-loc       (z/leftmost forms-zipper)
-        actual       (z/edit-node ns-loc #(loc->form % :clj))]
+        actual       (loc->form ns-loc :clj)]
 
-    (z/sexpr actual)
-    ))
+    actual))

@@ -67,7 +67,8 @@
       (tr/process-list env) => env))
 
   (let [env (util/processing-env
-              {:zloc (z/of-string "(1 2 3)")})]
+              {::tr/path (list)
+               :zloc     (z/of-string "(1 2 3)")})]
     (when-mocking!
       (tr/process-form e) =1x=> (do
                                   (assertions
@@ -150,7 +151,8 @@
       (tr/process-form env) => env))
 
   (let [env (util/processing-env
-              {:zloc (z/of-string "#?(:clj a :cljs b)")})]
+              {::tr/path (list)
+               :zloc     (z/of-string "#?(:clj a :cljs b)")})]
     (when-mocking!
       (tr/process-form e) =1x=> (do
                                   (assertions
@@ -168,7 +170,7 @@
                                   e)
 
       (assertions
-        "Returns an env as the original location"
+        "Returns an env at the original location"
         (tr/process-reader-conditional env) => env))))
 
 
