@@ -170,6 +170,8 @@
                      (fn [e xform] (xform e))
                      env
                      transforms)]
+    (log/info "Using parsing envs")
+    (log/spy :info (:parsing-envs env))
     (cond
       (= :reader-macro (z/tag (current-loc env)))
       (process-reader-conditional env)

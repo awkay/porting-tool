@@ -39,7 +39,7 @@
 (>defn- rename-symbol
   [env sym]
   [::pspecs/processing-env symbol? => symbol?]
-  (let [fqsym   (log/spy :info (util/sym->fqsym env (log/spy :info sym)))
+  (let [fqsym   (util/sym->fqsym env sym)
         new-sym (resolve-new-name env fqsym)]
     (if (= new-sym fqsym)
       sym

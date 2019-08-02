@@ -4,6 +4,7 @@
     [ghostwheel.core :refer [>defn =>]]
     [clojure.string :as str]
     [taoensso.timbre :as log]
+    [clojure.pprint :refer [pprint]]
     [com.fulcrologic.porting.transforms.rename :as rename]
     [com.fulcrologic.porting.specs :as pspec]
     [com.fulcrologic.porting.parsing.form-traversal :as ft]
@@ -14,20 +15,20 @@
 (defn do-processing-passes [processing-env]
   (let [state     (atom {})
         ;; PASS 1: You have access to a state-atom that you can swap! against to record information
-        _         (loop [env (assoc processing-env :pass 1 :state-atom state)]
-                    (let [loc (ft/current-loc env)]
-                      (ft/process-form env)
-                      (when-let [next-loc (z/right loc)]
-                        (recur (assoc env :zloc next-loc)))))
+        env1      (loop [env (assoc processing-env :pass 1 :state-atom state)]
+                    (let [{:keys [zloc]} (ft/process-form env)]
+                      (if-let [next-loc (z/right zloc)]
+                        (recur (assoc env :zloc next-loc))
+                        env)))
+        _         (log/info :env1 (with-out-str (pprint (:parsing-envs env1))))
         ;; PASS 2: You have the *value* as :state of the previous pass's information
         final-env (loop [env (assoc processing-env :pass 2 :state @state)]
-                    (let [loc (ft/current-loc env)]
-                      (ft/process-form env)
-                      (if-let [next-loc (z/right loc)]
+                    (let [{new-loc :zloc} (ft/process-form env)]
+                      (if-let [next-loc (z/right new-loc)]
                         (recur (assoc env :zloc next-loc))
                         (do
-                          (z/print-root loc)
-                          (assoc env :zloc (z/root loc))))))]
+                          (z/print-root new-loc)
+                          (assoc env :zloc (z/root new-loc))))))]
     (dissoc final-env :state :pass)))
 
 (>defn process-single
@@ -43,15 +44,9 @@
 (>defn process-cljc
   [filename config]
   [string? ::pspec/config => ::pspec/processing-env]
-  (let [clj-parsing-env    {} #_(nsparser/parse-namespace {} clj-nsform)
-        cljs-parsing-env   {} #_(nsparser/parse-namespace {} cljs-nsform)
-        common-parsing-env {} #_(nsparser/parse-namespace {} common-nsform)
-        processing-env     (util/processing-env {:parsing-envs    {:clj      clj-parsing-env
-                                                                   :agnostic common-parsing-env
-                                                                   :cljs     cljs-parsing-env}
-                                                 :zloc            (z/of-file filename)
-                                                 :config          config
-                                                 :feature-context :agnostic})]
+  (let [processing-env (util/processing-env {:zloc            (z/of-file filename)
+                                             :config          config
+                                             :feature-context :agnostic})]
     (do-processing-passes processing-env)))
 
 (>defn process-file
@@ -78,7 +73,6 @@
                             (update-in [:parsing-envs :clj] nsparser/parse-namespace clj-form)
                             (update-in [:parsing-envs :cljs] nsparser/parse-namespace cljs-form)
                             (update-in [:parsing-envs :agnostic] nsparser/parse-namespace agnostic-form))]
-        (log/info "Added aliases and such")
         new-env)
       env)))
 
