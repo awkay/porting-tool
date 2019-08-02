@@ -6,7 +6,8 @@
     [com.fulcrologic.porting.rewrite-clj.zip :as z]
     [com.fulcrologic.porting.rewrite-clj.node :as node]
     [clojure.spec.alpha :as s]
-    [clojure.set :as set])
+    [clojure.set :as set]
+    [taoensso.timbre :as log])
   (:import (clojure.lang ReaderConditional)))
 
 (>defn current-loc
@@ -144,8 +145,8 @@
                                        lang          (z/sexpr lang-loc)
                                        form-loc      (-> lang-loc (z/right))
                                        env           (assoc e :feature-context lang :zloc form-loc)
-                                       updated-env   (process-form env)
-                                       next-lang-loc (z/right form-loc)]
+                                       {updated-zipper :zloc :as updated-env} (process-form env)
+                                       next-lang-loc (z/right updated-zipper)]
                                    (if next-lang-loc
                                      (recur (assoc updated-env :zloc next-lang-loc))
                                      (-> updated-env

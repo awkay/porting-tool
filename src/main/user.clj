@@ -24,6 +24,7 @@
        (force msg_)))))
 
 (log/merge-config! {:output-fn output-fn})
+#_(log/merge-config! log/example-config)
 
 (comment
 
