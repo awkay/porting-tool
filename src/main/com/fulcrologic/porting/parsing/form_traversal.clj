@@ -4,6 +4,8 @@
     [com.fulcrologic.porting.specs :as pspec]
     [ghostwheel.core :refer [>defn =>]]
     [rewrite-clj.zip :as z]
+    [rewrite-clj.zip.subedit :as subedit]
+    [rewrite-clj.node :as node]
     [clojure.core.specs.alpha :as specs]
     [clojure.spec.alpha :as s]
     [clojure.set :as set]
@@ -16,17 +18,20 @@
   [::pspec/processing-env => ::pspec/zloc]
   (:zloc env))
 
-(>defn current-form
-  "Returns the current form at the current processing position."
-  [env]
-  [::pspec/processing-env => any?]
-  (z/sexpr (current-loc env)))
-
 (>defn current-node
   "Returns the current parsed node for the current processing position."
   [env]
   [::pspec/processing-env => any?]
   (z/node (current-loc env)))
+
+(>defn current-form
+  "Returns the current form at the current processing position."
+  [env]
+  [::pspec/processing-env => any?]
+  (let [n (current-node env)])
+  (if (node/printable-only? (current-node env))
+    (z/string (current-loc env))
+    (z/sexpr (current-loc env))))
 
 (declare process-form)
 
@@ -96,19 +101,42 @@
 
 (>defn process-list [env]
   [::pspec/processing-env => any?]
-  (let [feature                (:feature-context env)
-        possible-function-name (first (current-form env))
+  (let [possible-function-name (first (current-form env))
+        env                    (update env ::path (fnil conj (list)) possible-function-name)
+        feature                (:feature-context env)
         function-name          (cond->> possible-function-name
                                  (symbol? possible-function-name) (util/sym->fqsym env))
         {:keys [let-forms defn-forms]} (-> (get-in env [:config feature])
                                          (update :let-forms set/union known-let-forms)
                                          (update :defn-forms set/union known-defn-forms))]
-    (cond
-      (contains? let-forms function-name) (process-let env)
-      (contains? defn-forms function-name) (process-defn env)
-      :else (process-sequence env))))
+    (update (cond
+              (contains? let-forms function-name) (process-let env)
+              (contains? defn-forms function-name) (process-defn env)
+              :else (process-sequence env))
+      ::path rest)))
+
+(defn current-path
+  "Returns a stack of current list contexts, with the most recent first. For example, when processing:
+
+  ```
+  (ns a
+    (:require [lib]))
+  ```
+
+  The current path will start out empty. When entering the first list it will become `(ns)`. When nesting into the
+  `(:require ...)` it will become `(:require ns)`, etc.
+  "
+  [env]
+  (::path env))
+
+(defn within
+  "Returns true if the given `k` is on the current path (the path is a stack of the first element of lists that
+  have been recursively entered)."
+  [env k]
+  (contains? (set (current-path env)) k))
 
 (s/def ::reader-cond #(instance? ReaderConditional %))
+
 
 (>defn process-reader-conditional [env]
   [::pspec/processing-env => ::pspec/processing-env]
@@ -135,9 +163,7 @@
                                        (update :zloc (fn [l] (-> l z/up z/up)))))))
                                env)]
         ending-env)
-      (do
-        (log/info "Skipping " reader)
-        env))))
+      env)))
 
 (>defn process-form
   "Process (recursively) the form at the current zloc of the env, returning an env with zloc at the same position, but
@@ -147,19 +173,10 @@
   (let [feature    (:feature-context env)
         form       (current-form env)
         transforms (get-in env [:config feature :transforms])
-        p          (partial process-form env)
-        node       (current-node env)
-        ;old-meta   (meta form)
-        #_#_form (reduce
-                   (fn [f [predicate xform]]
-                     (if (predicate env f)
-                       (xform env f)
-                       f))
-                   form
-                   transforms)
-        #_#_form (if old-meta
-                   (with-meta form old-meta)
-                   form)]
+        env        (reduce
+                     (fn [e xform] (xform e))
+                     env
+                     transforms)]
     (cond
       (= :reader-macro (z/tag (current-loc env)))
       (process-reader-conditional env)
@@ -174,3 +191,51 @@
       (process-sequence env)
 
       :else env)))
+
+(defn reader-cond? [loc]
+  (try
+    (= :reader-macro (z/tag loc))
+    (catch Throwable t
+      false)))
+
+(defn reader->map [loc]
+  (let [reader-loc (z/down loc)
+        reader     (z/sexpr reader-loc)]
+    (if (= '? reader)
+      (let [list-loc     (z/right reader-loc)
+            starting-loc (z/down list-loc)]
+        (if starting-loc
+          (loop [lang-loc starting-loc result {}]
+            (let [lang          (z/sexpr lang-loc)
+                  form-loc      (-> lang-loc (z/right))
+                  form          (if (node/printable-only? (z/node form-loc))
+                                  (z/string form-loc)
+                                  (z/sexpr form-loc))
+                  next-lang-loc (z/right form-loc)
+                  new-result    (assoc result lang form)]
+              (if next-lang-loc
+                (recur next-lang-loc new-result)
+                new-result)))
+          {}))
+      {})))
+
+;; TASK: This seems to be working, but I'm not sure how to apply it to just a ns form and get back the form
+(defn loc->form
+  "Returns the form for the current position in the `env` with reader conditionals
+   processed into their correct language side (or omitted). No transforms are
+   applied during this conversion."
+  [loc lang]
+  (loop [start loc]
+    (let [cond-loc (z/find-next start z/next reader-cond?)]
+      (if (z/end? cond-loc)
+        (z/root start)
+        (let [forms       (try (reader->map cond-loc) (catch Exception e
+                                                        (log/error e "Cannot convert reader conditional to map!")
+                                                        {}))
+              replacement (if-let [f (get forms lang)]
+                            f
+                            nil)
+              new-loc     (if replacement
+                            (z/replace cond-loc replacement)
+                            (z/remove cond-loc))]
+          (recur new-loc))))))

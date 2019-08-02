@@ -32,17 +32,11 @@
 (s/def ::parsing-envs (s/map-of ::feature ::parsing-env))
 (s/def ::feature-context ::feature)
 
-(s/def ::transform-function (s/fspec
-                              :args (s/cat :env map? :form any?)
-                              :ret any?
-                              :gen #(s/gen #{(fn xform [e f] f)})))
-
 
 (s/def ::let-forms (s/every symbol? :kind set?))
 (s/def ::defn-forms (s/every symbol? :kind set?))
 
-(s/def ::form-transform (s/tuple ::form-predicate ::transform-function))
-(s/def ::transforms (s/every ::form-transform :kind vector?))
+(s/def ::transforms (s/every fn? :kind vector?))
 (s/def ::lang-config (s/keys
                        :opt-un [::fqname-old->new
                                 ::namespace-old->new
@@ -70,11 +64,6 @@
 (comment
   (gen/sample (s/gen ::config))
 
-
-  (s/explain-str ::config
-    {:clj {:transforms [
-                        [(fn [f] 32) (fn [e f] f)]
-                        ]}})
   )
 
 

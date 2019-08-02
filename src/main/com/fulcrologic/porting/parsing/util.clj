@@ -72,7 +72,7 @@
   [::pspec/parsing-env (s/every symbol?) => ::pspec/parsing-env]
   (reduce
     (fn [e s]
-      (update e :raw-sym->fqsym dissoc s))
+      (update e :raw-sym->fqsym (fnil dissoc {}) s))
     env
     syms))
 
