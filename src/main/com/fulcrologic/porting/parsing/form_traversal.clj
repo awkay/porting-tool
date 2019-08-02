@@ -24,14 +24,8 @@
   [::pspec/processing-env => any?]
   (z/node (current-loc env)))
 
-(>defn current-form
-  "Returns the current form at the current processing position."
-  [env]
-  [::pspec/processing-env => any?]
-  (let [n (current-node env)])
-  (if (node/printable-only? (current-node env))
-    (z/string (current-loc env))
-    (z/sexpr (current-loc env))))
+(declare current-form)
+
 
 (declare process-form)
 
@@ -251,6 +245,23 @@
     (if-let [p (z/up pos)]
       (recur p)
       pos)))
+
+(>defn current-form
+  "Returns the current form at the current processing position. If `lang` is provided reader conditionals
+  will be replaced with that branch (if it exists)."
+  ([env lang]
+   [::pspec/processing-env => any?]
+   (if (node/printable-only? (current-node env))
+     (z/string (current-loc env))
+     (loc->form (current-loc env) lang)))
+  ([env]
+   [::pspec/processing-env => any?]
+   (if (node/printable-only? (current-node env))
+     (z/string (current-loc env))
+     (z/sexpr (current-loc env)))))
+
+(defn replace [env new-value]
+  (update env :zloc z/replace new-value))
 
 (comment
   (let [forms-zipper (z/of-string "(ns a (:require #?(:clj 1 :cljs 2)))\n(defn f [a] #?(:clj 42 :cljs 43))")

@@ -2,15 +2,14 @@
   (:require
     [com.fulcrologic.porting.specs :as pspec]
     [ghostwheel.core :refer [>defn =>]]
-    [clojure.pprint :as pp :refer [pprint]]
     [clojure.string :as str]
     [taoensso.timbre :as log]
-    [rewrite-clj.parser :as rw]
-    [rewrite-clj.zip :as z]
-    ;[com.fulcrologic.porting.transforms.rename :as rename]
+    [com.fulcrologic.porting.transforms.rename :as rename]
     [com.fulcrologic.porting.specs :as pspec]
     [com.fulcrologic.porting.parsing.form-traversal :as ft]
-    [com.fulcrologic.porting.parsing.util :as util]))
+    [com.fulcrologic.porting.parsing.namespace-parser :as nsparser]
+    [com.fulcrologic.porting.parsing.util :as util]
+    [com.fulcrologic.porting.rewrite-clj.zip :as z]))
 
 (defn do-processing-passes [processing-env]
   (let [state     (atom {})
@@ -27,7 +26,7 @@
                       (if-let [next-loc (z/right loc)]
                         (recur (assoc env :zloc next-loc))
                         (do
-                          #_(z/print-root loc)
+                          (z/print-root loc)
                           (assoc env :zloc (z/root loc))))))]
     (dissoc final-env :state :pass)))
 
@@ -59,8 +58,7 @@
   "Process a clj/cljs/cljc file using the given config."
   [filename config]
   [string? ::pspec/config => any?]
-  (binding [util/*current-file*        filename
-            pp/*print-pprint-dispatch* pp/code-dispatch]
+  (binding [util/*current-file* filename]
     (try
       (cond
         (str/ends-with? filename ".cljs") (process-single filename config :cljs)
@@ -71,15 +69,18 @@
         (log/error e "Processing aborted for" filename)))))
 
 (defn record-aliases [env]
-  (if (and (ft/within env 'ns) (ft/within env :require) (= :require (ft/current-form env)))
-    (let [f   (ft/current-form env)
-          loc (ft/current-loc env)]
-      (log/info "REQUIRE" f)
-      env))
-
-
-
-  env)
+  (let [f (ft/current-form env)]
+    (if (and (list? f) (= 'ns (first f)))
+      (let [clj-form      (ft/current-form env :clj)
+            cljs-form     (ft/current-form env :cljs)
+            agnostic-form (ft/current-form env :none)
+            new-env       (-> env
+                            (update-in [:parsing-envs :clj] nsparser/parse-namespace clj-form)
+                            (update-in [:parsing-envs :cljs] nsparser/parse-namespace cljs-form)
+                            (update-in [:parsing-envs :agnostic] nsparser/parse-namespace agnostic-form))]
+        (log/info "Added aliases and such")
+        new-env)
+      env)))
 
 (comment
   (process-file "./resources/sample.clj" {:clj {:fqname-old->new  {'clojure.edn/f           'com.boo/f
@@ -90,18 +91,14 @@
                                                                    'other.ns  'other
                                                                    'my-reader 'r}}})
 
-  (let [in   (rw/parse-file-all "./resources/trial.cljc")
-        data (z/of-file "./resources/trial.cljc")]
-    (z/right (z/find-value data z/next 'ns))
-    )
-
 
   (let [base   {:fqname-old->new    {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc
                                      'fulcro.client.primitives/get-computed 'com.fulcrologic.fulcro.components/get-computed}
                 :namespace-old->new {'fulcro.client.data-fetch 'com.fulcrologic.fulcro.data-fetch
                                      'fulcro.client.mutations  'com.fulcrologic.fulcro.mutations}
 
-                :transforms         [record-aliases]
+                :transforms         [record-aliases rename/rename-artifacts-transform rename/rename-namespaces-transform
+                                     rename/add-missing-namespaces-transform]
                 :namespace->alias   {'com.fulcrologic.fulcro.components 'comp
                                      'com.fulcrologic.fulcro.data-fetch 'df
                                      'com.fulcrologic.fulcro.mutations  'm
