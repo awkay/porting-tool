@@ -5,9 +5,7 @@
     [com.fulcrologic.porting.specs :as pspec]
     [clojure.pprint :refer [pprint]]
     [clojure.core.specs.alpha :as specs]
-    [clojure.spec.alpha :as s]
-    [taoensso.timbre :as log]
-    [clojure.spec.gen.alpha :as gen]))
+    [clojure.spec.alpha :as s]))
 
 (s/def ::as (s/with-gen simple-symbol? #(s/gen '#{prim comp log})))
 (s/def ::refer (s/tuple (s/with-gen keyword? #(s/gen #{:syms})) (s/every simple-symbol?)))

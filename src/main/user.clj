@@ -28,9 +28,9 @@
 (comment
 
   (let [;ast (p/parse-file-all "./resources/trial.cljc")
-        root-loc      (z/of-string "#?()")
+        root-loc (z/of-string "#?()")
         #_#_first-dep-loc (-> root-loc (z/down) (z/right) (z/right) (z/down) (z/right))]
-    (-> root-loc z/down z/right z/down  z/sexpr)
+    (-> root-loc z/down z/right z/down z/sexpr)
     #_(-> root-loc (z/down) (z/right) (z/right) (z/down) (z/right) (z/right) (z/right) (z/right))
     #_(-> root-loc (z/down) (z/right) (z/right) (z/down) (z/right)
         (z/insert-right '[a.b :as c])

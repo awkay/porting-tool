@@ -5,11 +5,8 @@
     [ghostwheel.core :refer [>defn =>]]
     [com.fulcrologic.porting.rewrite-clj.zip :as z]
     [com.fulcrologic.porting.rewrite-clj.node :as node]
-    [rewrite-clj.zip.subedit :as subedit]
-    [clojure.core.specs.alpha :as specs]
     [clojure.spec.alpha :as s]
-    [clojure.set :as set]
-    [taoensso.timbre :as log])
+    [clojure.set :as set])
   (:import (clojure.lang ReaderConditional)))
 
 (>defn current-loc
@@ -170,8 +167,6 @@
                      (fn [e xform] (xform e))
                      env
                      transforms)]
-    (log/info "Using parsing envs")
-    (log/spy :info (:parsing-envs env))
     (cond
       (= :reader-macro (z/tag (current-loc env)))
       (process-reader-conditional env)
@@ -224,7 +219,7 @@
       (if (z/end? cond-loc)
         start
         (let [forms       (try (reader->map cond-loc) (catch Exception e
-                                                        (log/error e "Cannot convert reader conditional to map!")
+                                                        (util/report-error! "Cannot convert reader conditional to map!")
                                                         {}))
               replacement (if-let [f (get forms lang)]
                             f

@@ -1,22 +1,22 @@
 (ns com.fulcrologic.porting.rewrite-clj.node
-(:require [rewrite-clj.node
-           coerce
-           comment
-           fn
-           forms
-           integer
-           keyword
-           meta
-           protocols
-           quote
-           reader-macro
-           regex
-           seq
-           string
-           token
-           uneval
-           whitespace]
-  [rewrite-clj.potemkin :refer [import-vars]]))
+  (:require [rewrite-clj.node
+             coerce
+             comment
+             fn
+             forms
+             integer
+             keyword
+             meta
+             protocols
+             quote
+             reader-macro
+             regex
+             seq
+             string
+             token
+             uneval
+             whitespace]
+            [rewrite-clj.potemkin :refer [import-vars]]))
 
 ;; ## API Facade
 (do

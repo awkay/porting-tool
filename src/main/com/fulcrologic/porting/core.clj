@@ -3,7 +3,6 @@
     [com.fulcrologic.porting.specs :as pspec]
     [ghostwheel.core :refer [>defn =>]]
     [clojure.string :as str]
-    [taoensso.timbre :as log]
     [clojure.pprint :refer [pprint]]
     [com.fulcrologic.porting.transforms.rename :as rename]
     [com.fulcrologic.porting.specs :as pspec]
@@ -16,19 +15,18 @@
   (let [state     (atom {})
         ;; PASS 1: You have access to a state-atom that you can swap! against to record information
         env1      (loop [env (assoc processing-env :pass 1 :state-atom state)]
-                    (let [{:keys [zloc]} (ft/process-form env)]
+                    (let [{:keys [zloc] :as new-env} (ft/process-form env)]
                       (if-let [next-loc (z/right zloc)]
-                        (recur (assoc env :zloc next-loc))
-                        env)))
-        _         (log/info :env1 (with-out-str (pprint (:parsing-envs env1))))
+                        (recur (assoc new-env :zloc next-loc))
+                        new-env)))
         ;; PASS 2: You have the *value* as :state of the previous pass's information
         final-env (loop [env (assoc processing-env :pass 2 :state @state)]
-                    (let [{new-loc :zloc} (ft/process-form env)]
+                    (let [{new-loc :zloc :as new-env} (ft/process-form env)]
                       (if-let [next-loc (z/right new-loc)]
-                        (recur (assoc env :zloc next-loc))
+                        (recur (assoc new-env :zloc next-loc))
                         (do
                           (z/print-root new-loc)
-                          (assoc env :zloc (z/root new-loc))))))]
+                          (assoc new-env :zloc (z/root new-loc))))))]
     (dissoc final-env :state :pass)))
 
 (>defn process-single
@@ -61,7 +59,7 @@
         (str/ends-with? filename ".clj") (process-single filename config :clj)
         :else (util/report-error! (str "Cannot determine language from file " filename)))
       (catch Exception e
-        (log/error e "Processing aborted for" filename)))))
+        (util/report-error! (str "Processing aborted for" filename))))))
 
 (defn record-aliases [env]
   (let [f (ft/current-form env)]
