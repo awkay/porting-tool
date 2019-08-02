@@ -3,9 +3,9 @@
     [com.fulcrologic.porting.parsing.util :as util :refer [find-maplike-vals clear-raw-syms]]
     [com.fulcrologic.porting.specs :as pspec]
     [ghostwheel.core :refer [>defn =>]]
-    [rewrite-clj.zip :as z]
+    [com.fulcrologic.porting.rewrite-clj.zip :as z]
+    [com.fulcrologic.porting.rewrite-clj.node :as node]
     [rewrite-clj.zip.subedit :as subedit]
-    [rewrite-clj.node :as node]
     [clojure.core.specs.alpha :as specs]
     [clojure.spec.alpha :as s]
     [clojure.set :as set]
@@ -137,7 +137,6 @@
 
 (s/def ::reader-cond #(instance? ReaderConditional %))
 
-
 (>defn process-reader-conditional [env]
   [::pspec/processing-env => ::pspec/processing-env]
   (let [loc        (current-loc env)
@@ -228,7 +227,7 @@
   (loop [start loc]
     (let [cond-loc (z/find-next start z/next reader-cond?)]
       (if (z/end? cond-loc)
-        (z/root start)
+        start
         (let [forms       (try (reader->map cond-loc) (catch Exception e
                                                         (log/error e "Cannot convert reader conditional to map!")
                                                         {}))
@@ -239,3 +238,17 @@
                             (z/replace cond-loc replacement)
                             (z/remove cond-loc))]
           (recur new-loc))))))
+
+(defn top [loc]
+  (loop [pos loc]
+    (if-let [p (z/up pos)]
+      (recur p)
+      pos)))
+
+(comment
+  (let [forms-zipper (z/of-string "(ns a (:require #?(:clj 1 :cljs 2)))\n(defn f [a] #?(:clj 42 :cljs 43))")
+        ns-loc       (z/leftmost forms-zipper)
+        actual       (z/edit-node ns-loc #(loc->form % :clj))]
+
+    (z/sexpr actual)
+    ))

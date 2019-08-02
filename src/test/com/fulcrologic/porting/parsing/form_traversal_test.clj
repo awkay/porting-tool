@@ -171,10 +171,4 @@
         "Returns an env as the original location"
         (tr/process-reader-conditional env) => env))))
 
-(comment
-  (let [z (z/of-string "(ns a (:require #?(:clj 1 :cljs 2)))
-  (defn f [a] #?(:clj 42 :cljs 43))")
-        actual (tr/loc->form z :clj)]
 
-    actual
-    ))
