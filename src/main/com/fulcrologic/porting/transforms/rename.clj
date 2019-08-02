@@ -44,7 +44,7 @@
     (if (= new-sym fqsym)
       sym
       (do
-        (log/info "Renaming" sym "to" new-sym)
+        (log/debug "Renaming" sym "to" new-sym)
         new-sym))))
 
 (defn rename-artifacts-transform
@@ -80,7 +80,7 @@
             {:keys [namespace-old->new]} (get-in env [:config feature])]
         (if (contains? namespace-old->new f)
           (do
-            (log/info "Renaming" f)
+            (log/debug "Renaming" f)
             (ft/replace env (get namespace-old->new f)))
           env))
       env)))

@@ -13,6 +13,8 @@
 (m/defmutation some-mutation [params]
   (action [{:keys [reconciler state] :as env}]              ; comment 2
     (df/load-action env :root nil)
+    (let [defsc 2]
+      defsc)
     #(first %2)
     #_abc
     (#'some-specials

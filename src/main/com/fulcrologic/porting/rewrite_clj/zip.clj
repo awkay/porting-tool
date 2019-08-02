@@ -23,65 +23,6 @@
 
 ;; ## API Facade
 
-(comment
-  (clojure.walk/macroexpand-all
-    '(import-vars
-       [rewrite-clj.custom-zipper.core
-        node position root]
-
-       [rewrite-clj.zip.base
-        child-sexprs
-        edn* edn tag sexpr
-        length value
-        of-file of-string
-        string root-string
-        print print-root]
-
-       [rewrite-clj.zip.edit
-        replace edit splice
-        prefix suffix]
-
-       [rewrite-clj.zip.find
-        find find-next
-        find-depth-first
-        find-next-depth-first
-        find-tag find-next-tag
-        find-value find-next-value
-        find-token find-next-token]
-
-       [rewrite-clj.zip.insert
-        insert-right insert-left
-        insert-child append-child]
-
-       [rewrite-clj.zip.move
-        left right up down prev next
-        leftmost rightmost
-        leftmost? rightmost? end?]
-
-       [rewrite-clj.zip.remove
-        remove]
-
-       [rewrite-clj.zip.seq
-        seq? list? vector? set? map?
-        map map-keys map-vals
-        get assoc]
-
-       [rewrite-clj.zip.subedit
-        edit-node edit-> edit->>
-        subedit-node subedit-> subedit->>]
-
-       [rewrite-clj.zip.walk
-        prewalk
-        postwalk]
-
-       [rewrite-clj.zip.whitespace
-        whitespace? linebreak?
-        whitespace-or-comment?
-        skip skip-whitespace
-        skip-whitespace-left
-        prepend-space append-space
-        prepend-newline append-newline])))
-
 ;; ## Base Operations
 
 (defmacro ^:private defbase

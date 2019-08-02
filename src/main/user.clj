@@ -23,7 +23,7 @@
        (str/upper-case (name level)) " "
        (force msg_)))))
 
-(log/merge-config! log/example-config)
+(log/merge-config! {:output-fn output-fn})
 
 (comment
 
