@@ -94,10 +94,10 @@
 (>defn process-list [env]
   [::pspec/processing-env => any?]
   (let [possible-function-name (first (current-form env))
-        env                    (update env ::path (fnil conj (list)) possible-function-name)
-        feature                (:feature-context env)
         function-name          (cond->> possible-function-name
                                  (symbol? possible-function-name) (util/sym->fqsym env))
+        env                    (update env ::path (fnil conj (list)) function-name)
+        feature                (:feature-context env)
         {:keys [let-forms defn-forms]} (-> (get-in env [:config feature])
                                          (update :let-forms set/union known-let-forms)
                                          (update :defn-forms set/union known-defn-forms))]

@@ -29,7 +29,7 @@
     (swap! state assoc-in [:x 1] {}))
   (remote [env] (df/remote-load env)))
 
-(defsc Component [this props]
+(defsc Component [t props]
   {:componentDidMount (fn [] ...)}
   (let [computed (prim/get-computed this)]
     (dom/div

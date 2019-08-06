@@ -5,6 +5,7 @@
     [clojure.string :as str]
     [clojure.pprint :refer [pprint]]
     [com.fulcrologic.porting.transforms.rename :as rename]
+    [com.fulcrologic.porting.transforms.fulcro :as fulcro]
     [com.fulcrologic.porting.specs :as pspec]
     [com.fulcrologic.porting.parsing.form-traversal :as ft]
     [com.fulcrologic.porting.parsing.namespace-parser :as nsparser]
@@ -89,7 +90,7 @@
                                      'fulcro.client.mutations  'com.fulcrologic.fulcro.mutations}
 
                 :transforms         [record-aliases rename/rename-artifacts-transform rename/rename-namespaces-transform
-                                     rename/add-missing-namespaces-transform]
+                                     rename/add-missing-namespaces-transform fulcro/update-lifecycle-transform]
                 :namespace->alias   {'com.fulcrologic.fulcro.components 'comp
                                      'com.fulcrologic.fulcro.data-fetch 'df
                                      'com.fulcrologic.fulcro.mutations  'm
