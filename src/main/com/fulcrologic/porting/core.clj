@@ -83,7 +83,6 @@
                                                                    'other.ns  'other
                                                                    'my-reader 'r}}})
 
-
   (let [base   {:fqname-old->new    {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc
                                      'fulcro.client.primitives/get-computed 'com.fulcrologic.fulcro.components/get-computed}
                 :namespace-old->new {'fulcro.client.data-fetch 'com.fulcrologic.fulcro.data-fetch

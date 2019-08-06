@@ -60,7 +60,7 @@
   [env]
   (let [f (ft/current-form env)]
     (if (and (not (ft/within env 'ns)) (symbol? f))
-      (ft/replace env (rename-symbol env f))
+      (ft/replace-current-form env (rename-symbol env f))
       env)))
 
 (defn rename-namespaces-transform
@@ -81,7 +81,7 @@
         (if (contains? namespace-old->new f)
           (do
             (log/debug "Renaming" f)
-            (ft/replace env (get namespace-old->new f)))
+            (ft/replace-current-form env (get namespace-old->new f)))
           env))
       env)))
 

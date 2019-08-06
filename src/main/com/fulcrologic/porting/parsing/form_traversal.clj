@@ -165,7 +165,18 @@
         form       (current-form env)
         transforms (get-in env [:config feature :transforms])
         env        (reduce
-                     (fn [e xform] (xform e))
+                     (fn [e xform]
+                       (let [apply-xform (fn [{:keys [zloc] :as env}]
+                                           ;; this mess ensures the xform doesn't "move" the loc of the zipper
+                                           (let [final-env (atom e)
+                                                 fz        (fn [zloc]
+                                                             (let [tempenv (assoc env :zloc zloc)
+                                                                   new-env (xform tempenv)]
+                                                               (reset! final-env new-env)
+                                                               (:zloc new-env)))
+                                                 zloc2     (z/edit-node zloc fz)]
+                                             (assoc @final-env :zloc zloc2)))]
+                         (apply-xform e)))
                      env
                      transforms)]
     (cond
@@ -258,7 +269,8 @@
      (z/string (current-loc env))
      (z/sexpr (current-loc env)))))
 
-(defn replace [env new-value]
+(defn replace-current-form [env new-value]
+  (log/info "Replacing form with " new-value)
   (update env :zloc z/replace new-value))
 
 (comment

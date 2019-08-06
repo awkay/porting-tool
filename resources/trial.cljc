@@ -30,7 +30,7 @@
   (remote [env] (df/remote-load env)))
 
 (defsc Component [this props]
-  {}
+  {:componentDidMount (fn [] ...)}
   (let [computed (prim/get-computed this)]
     (dom/div
       (dom/div "Hi"))))
