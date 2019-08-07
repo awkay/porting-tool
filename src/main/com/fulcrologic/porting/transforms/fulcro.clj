@@ -38,3 +38,15 @@
           (util/report-warning! "The :protocols key is no longer supported in Fulcro 3. Please see Developer's Guide." f))
         new-env)
       env)))
+
+(def ns-warnings
+  {'fulcro.client.localized-dom "Fulcro CSS is now an extra dep. Remember to add it to your project."
+   'localized-dom               "Fulcro CSS is now an extra dep. Remember to add it to your project."
+   'fulcro.websockets           "Fulcro websockets is now an extra dependency. Remember to add it to your project."})
+
+(defn warn-missing-deps
+  [env]
+  (let [form (ft/current-form env)]
+    (when (and (ft/within env 'ns) (symbol? form) (contains? ns-warnings form))
+      (util/report-warning! (get ns-warnings form))))
+  env)

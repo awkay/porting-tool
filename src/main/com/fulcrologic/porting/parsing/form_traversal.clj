@@ -259,7 +259,7 @@
   "Returns the current form at the current processing position. If `lang` is provided reader conditionals
   will be replaced with that branch (if it exists)."
   ([env lang]
-   [::pspec/processing-env => any?]
+   [::pspec/processing-env keyword? => any?]
    (if (node/printable-only? (current-node env))
      (z/string (current-loc env))
      (loc->form (current-loc env) lang)))

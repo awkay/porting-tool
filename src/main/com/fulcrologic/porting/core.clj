@@ -5,14 +5,14 @@
     [clojure.string :as str]
     [clojure.pprint :refer [pprint]]
     [com.fulcrologic.porting.transforms.rename :as rename]
-    [com.fulcrologic.porting.transforms.fulcro :as fulcro]
     [com.fulcrologic.porting.specs :as pspec]
     [com.fulcrologic.porting.parsing.form-traversal :as ft]
     [com.fulcrologic.porting.parsing.namespace-parser :as nsparser]
     [com.fulcrologic.porting.parsing.util :as util]
-    [com.fulcrologic.porting.rewrite-clj.zip :as z]))
+    [com.fulcrologic.porting.rewrite-clj.zip :as z]
+    [taoensso.timbre :as log]))
 
-(defn do-processing-passes [processing-env]
+(defn do-processing-passes [filename processing-env]
   (let [state     (atom {})
         ;; PASS 1: You have access to a state-atom that you can swap! against to record information
         env1      (loop [env (assoc processing-env :pass 1 :state-atom state)]
@@ -26,7 +26,7 @@
                       (if-let [next-loc (z/right new-loc)]
                         (recur (assoc new-env :zloc next-loc))
                         (do
-                          (z/print-root new-loc)
+                          (spit filename (with-out-str (z/print-root new-loc)))
                           (assoc new-env :zloc (z/root new-loc))))))]
     (dissoc final-env :state :pass)))
 
@@ -37,7 +37,7 @@
                                              :zloc            (z/of-file filename)
                                              :config          config
                                              :feature-context lang})]
-    (do-processing-passes processing-env)))
+    (do-processing-passes filename processing-env)))
 
 
 (>defn process-cljc
@@ -46,7 +46,7 @@
   (let [processing-env (util/processing-env {:zloc            (z/of-file filename)
                                              :config          config
                                              :feature-context :agnostic})]
-    (do-processing-passes processing-env)))
+    (do-processing-passes filename processing-env)))
 
 (>defn process-file
   "Process a clj/cljs/cljc file using the given config."
@@ -60,6 +60,7 @@
         (str/ends-with? filename ".clj") (process-single filename config :clj)
         :else (util/report-error! (str "Cannot determine language from file " filename)))
       (catch Exception e
+        (log/error e "Processing died due to an exception")
         (util/report-error! (str "Processing aborted for" filename))))))
 
 (defn record-aliases [env]
@@ -74,30 +75,3 @@
                             (update-in [:parsing-envs :agnostic] nsparser/parse-namespace agnostic-form))]
         new-env)
       env)))
-
-(comment
-  (process-file "./resources/sample.clj" {:clj {:fqname-old->new  {'clojure.edn/f           'com.boo/f
-                                                                   'clojure.edn/g           'other.ns/g
-                                                                   'clojure.edn/read-string 'my-reader/read-it}
-                                                :transforms       [rename/rename-artifacts-transform]
-                                                :namespace->alias {'com.boo   'boo
-                                                                   'other.ns  'other
-                                                                   'my-reader 'r}}})
-
-  (let [base   {:fqname-old->new    {'fulcro.client.primitives/defsc        'com.fulcrologic.fulcro.components/defsc
-                                     'fulcro.client.primitives/get-computed 'com.fulcrologic.fulcro.components/get-computed}
-                :namespace-old->new {'fulcro.client.data-fetch 'com.fulcrologic.fulcro.data-fetch
-                                     'fulcro.client.mutations  'com.fulcrologic.fulcro.mutations}
-
-                :transforms         [record-aliases rename/rename-artifacts-transform rename/rename-namespaces-transform
-                                     rename/add-missing-namespaces-transform fulcro/update-lifecycle-transform]
-                :namespace->alias   {'com.fulcrologic.fulcro.components 'comp
-                                     'com.fulcrologic.fulcro.data-fetch 'df
-                                     'com.fulcrologic.fulcro.mutations  'm
-                                     'com.fulcrologic.fulcro.dom        'dom
-                                     'com.fulcrologic.fulcro.dom-server 'dom}}
-        config {:agnostic base
-                :cljs     (merge base {:namespace-old->new {'fulcro.client.dom 'com.fulcrologic.fulcro.dom}})
-                :clj      (merge base {:namespace-old->new {'fulcro.client.dom-server 'com.fulcrologic.fulcro.dom-server}})}]
-    (process-file "./resources/trial.cljc" config)
-    :ok))

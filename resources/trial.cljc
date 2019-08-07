@@ -1,8 +1,9 @@
 (ns trial
   (:require
-    [fulcro.client.primitives :as prim :refer [defsc]]
-    [fulcro.client.data-fetch :as df]
-    [fulcro.client.mutations :as m]
+    [fulcro.client
+     [primitives :as prim :refer [defsc]]
+     [data-fetch :as df]
+     [mutations :as m]]
     #?(:cljs [fulcro.client.dom :as dom]
        :clj  [fulcro.client.dom-server :as dom])))
 

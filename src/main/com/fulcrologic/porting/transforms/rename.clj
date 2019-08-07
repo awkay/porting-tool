@@ -8,7 +8,27 @@
     [taoensso.timbre :as log]
     [clojure.walk :as walk]
     [clojure.spec.alpha :as s]
+    [rewrite-clj.node.whitespace :as ws]
     [com.fulcrologic.porting.rewrite-clj.zip :as z]))
+
+(defn flatten-nested-libspecs-transform
+  "A transform that flattens nested require libspecs so that rename can work on them."
+  [env]
+  (let [f (ft/current-form env)]
+    (if (and (ft/within env 'ns) (ft/within env :require) (vector? f) (symbol? (first f)) (vector? (second f)))
+      (let [main-ns  (first f)
+            subspecs (rest f)
+            newforms (reduce
+                       (fn [result [subname & args]]
+                         (-> result
+                           (conj (into [(symbol (str main-ns "." subname))] args))
+                           (conj (ws/newline-node "\n"))))
+                       []
+                       subspecs)]
+        (update env :zloc (fn [loc] (-> loc
+                                      (z/replace newforms)
+                                      z/splice))))
+      env)))
 
 (>defn- resolve-new-name
   "Given a processing env and a fully-qualified symbol, return
@@ -108,8 +128,9 @@
             {:keys [namespace->alias]} (get-in env [:config feature])
             elements (reduce
                        (fn [result ns]
-                         (cond-> [ns]
-                           (get namespace->alias ns) (conj :as (namespace->alias ns))))
+                         (conj result
+                           (cond-> [ns]
+                             (get namespace->alias ns) (conj :as (namespace->alias ns)))))
                        []
                        nses)]
         (update env :zloc (fn [loc] (-> loc
