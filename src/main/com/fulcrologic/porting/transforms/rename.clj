@@ -30,6 +30,22 @@
                                       z/splice))))
       env)))
 
+(defn delete-namespaces-transform
+  "A transform that deletes namespace requires from the ns form. The config is:
+
+  * `:deleted-namespaces #{fqsyms}`
+  "
+  [env]
+  (let [f       (ft/current-form env)
+        feature (:feature-context env)
+        {:keys [deleted-namespaces]} (get-in env [:config feature])]
+    (if (and (ft/within env 'ns) (ft/within env :require) (vector? f) (symbol? (first f)))
+      (let [ns (first f)]
+        (if (contains? deleted-namespaces ns)
+          (update env :zloc z/replace (ws/whitespace-node " "))
+          env))
+      env)))
+
 (>defn- resolve-new-name
   "Given a processing env and a fully-qualified symbol, return
   the most succinct qualified symbol that will work after any possible renames."
