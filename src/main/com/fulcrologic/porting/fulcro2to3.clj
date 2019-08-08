@@ -3,9 +3,15 @@
     [clojure.string :as str]
     [taoensso.timbre :as log]
     [clojure.java.io :as io]
+    [clojure.pprint :as pprint]
+    [clojure.tools.reader.reader-types :refer [push-back-reader]]
+    [clojure.tools.reader :as reader]
+    [clojure.tools.reader.edn :as edn]
     [com.fulcrologic.porting.core :as core]
     [com.fulcrologic.porting.transforms.fulcro :as fulcro]
-    [com.fulcrologic.porting.transforms.rename :as rename])
+    [com.fulcrologic.porting.transforms.rename :as rename]
+    [com.fulcrologic.porting.rewrite-clj.zip :as z]
+    [com.fulcrologic.porting.parsing.form-traversal :as ft])
   (:gen-class)
   (:import (java.io File)))
 
@@ -21,14 +27,14 @@
 
 (let [base {:fqname-old->new    {
                                  'fulcro.client.data-fetch/append-to                       'com.fulcrologic.fulcro.algorithms.data-targeting/append-to
-                                 'fulcro.client.data-fetch/data-state?                        'com.fulcrologic.fulcro.data-fetch/data-state?
-                                 'fulcro.client.data-fetch/elide-query-nodes                        'com.fulcrologic.fulcro.algorithms.misc/elide-query-nodes
+                                 'fulcro.client.data-fetch/data-state?                     'com.fulcrologic.fulcro.data-fetch/data-state?
+                                 'fulcro.client.data-fetch/elide-query-nodes               'com.fulcrologic.fulcro.algorithms.misc/elide-query-nodes
                                  'fulcro.client.data-fetch/failed?                         'com.fulcrologic.fulcro.data-fetch/failed?
                                  'fulcro.client.data-fetch/load                            'com.fulcrologic.fulcro.data-fetch/load!
                                  'fulcro.client.data-fetch/load-field                      'com.fulcrologic.fulcro.data-fetch/load-field!
                                  'fulcro.client.data-fetch/load-params*                    'com.fulcrologic.fulcro.data-fetch/load-params*
                                  'fulcro.client.data-fetch/loading?                        'com.fulcrologic.fulcro.data-fetch/loading?
-                                 'fulcro.client.data-fetch/marker-table                        'com.fulcrologic.fulcro.data-fetch/marker-table
+                                 'fulcro.client.data-fetch/marker-table                    'com.fulcrologic.fulcro.data-fetch/marker-table
                                  'fulcro.client.data-fetch/multiple-targets                'com.fulcrologic.fulcro.algorithms.data-targeting/multiple-targets
                                  'fulcro.client.data-fetch/prepend-to                      'com.fulcrologic.fulcro.algorithms.data-targeting/prepend-to
                                  'fulcro.client.data-fetch/ready?                          'com.fulcrologic.fulcro.data-fetch/ready?
@@ -71,7 +77,7 @@
                                  'fulcro.client.primitives/tree->db                        'com.fulcrologic.fulcro.algorithms.normalize/tree->db
                                  'fulcro.client.primitives/update-state!                   'com.fulcrologic.fulcro.components/update-state!
                                  'fulcro.client.primitives/with-parent-context             'com.fulcrologic.fulcro.components/with-parent-context
-                                 ;'fulcro.client.primitives/integrate-ident!    'com.fulcrologic.fulcro.algorithms.merge/missing
+                                 ;'fulcro.client.primitives/integrate-ident!    nil
                                  }
 
             :namespace-old->new {'fulcro.client.data-fetch 'com.fulcrologic.fulcro.data-fetch
@@ -131,5 +137,68 @@
       (log/info "Porting" filename)
       (core/process-file filename fulcro-port-config))))
 
+(defn reader-cond-loc->map [loc]
+  (->> loc
+    z/down
+    z/right
+    z/sexpr
+    (partition 2)
+    (into {} (map vec))))
+
+(def defn-form? '#{defn >defn defmacro defrecord defsc})
+(defn loc-of-function? [loc]
+  (if (ft/reader-cond? loc)
+    (let [form (-> (reader-cond-loc->map loc) vals first)]
+      (and (list? form) (defn-form? (some-> form first name symbol))))
+    (and loc (z/list? loc) (defn-form? (some-> loc (z/sexpr) first name symbol)))))
+
+(defn function-locations [f]
+  (let [f      (io/file f)
+        zipper (z/of-file f)
+        ns     (-> zipper z/down z/next z/sexpr)]
+    (loop [floc (z/find-next zipper loc-of-function?) functions (sorted-map)]
+      (let [floc (if (ft/reader-cond? floc)
+                   (-> floc z/down z/right z/down z/right)
+                   floc)]
+        (if floc
+          (let [fname     (-> floc z/down z/right z/sexpr)
+                functions (update functions (symbol (name fname)) (fnil conj (sorted-set))
+                            (symbol (name ns) (name fname)))]
+            (recur (z/find-next floc loc-of-function?) functions))
+          functions)))))
+
+(defn all-function-locations [source-dir]
+  (reduce
+    (fn [result f]
+      (merge result (function-locations f)))
+    (sorted-map)
+    (source-files source-dir)))
+
+(defn get-fulcro-remappings []
+  (let [simple->new-fqnames (all-function-locations "../fulcro3/src/main")
+        simple->old-fqnames (all-function-locations "../fulcro/src/main")]
+    (reduce
+      (fn [result k]
+        (let [old-names (simple->old-fqnames k)
+              old-name  (first old-names)
+              new-names (simple->new-fqnames k)
+              new-name  (first new-names)]
+          (cond
+            (> (count old-names) 1) (assoc result old-name :DUPLICATE-OLD)
+            (empty? new-names) (assoc result old-name :NOT-PORTED)
+            (> (count new-names) 1) (assoc result old-name :NOT-PORTED)
+            :else (assoc result old-name new-name))))
+      (sorted-map)
+      (keys simple->old-fqnames))))
+
+
+
+
 (comment
+  (try
+    (get-fulcro-remappings)
+    (catch Exception e
+      (log/error e "problem")))
+
+
   (-main "resources"))

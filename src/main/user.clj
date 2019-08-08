@@ -5,11 +5,10 @@
     [clojure.spec.alpha :as s]
     [taoensso.timbre :as log]
     [clojure.string :as str]
-    [rewrite-clj.zip :as z]
-    [rewrite-clj.node :as zn]
-    [rewrite-clj.parser :as p]))
+    [com.fulcrologic.porting.rewrite-clj.zip :as z]
+    [clojure.java.io :as io]))
 
-(set-refresh-dirs "src/main" "src/test" )
+(set-refresh-dirs "src/main" "src/test")
 (alter-var-root #'s/*explain-out* (constantly expound/printer))
 
 (comment

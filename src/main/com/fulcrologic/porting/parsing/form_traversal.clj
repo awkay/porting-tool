@@ -270,10 +270,11 @@
      (z/sexpr (current-loc env)))))
 
 (defn replace-current-form [env new-value]
-  (log/info "Replacing form with " new-value)
   (update env :zloc z/replace new-value))
 
 (comment
+
+
   (let [forms-zipper (z/of-string "(ns a (:require #?(:clj 1 :cljs 2)))\n(defn f [a] #?(:clj 42 :cljs 43))")
         ns-loc       (z/leftmost forms-zipper)
         actual       (loc->form ns-loc :clj)]
