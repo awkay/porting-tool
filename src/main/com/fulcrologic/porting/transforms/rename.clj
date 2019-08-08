@@ -48,9 +48,10 @@
 
 (>defn- resolve-new-name
   "Given a processing env and a fully-qualified symbol, return
-  the most succinct qualified symbol that will work after any possible renames."
+  the most succinct qualified symbol that will work after any possible renames. If the symbol cannot be resolved
+  it simply returns the original input."
   [env sym]
-  [::pspecs/processing-env qualified-symbol? => qualified-symbol?]
+  [::pspecs/processing-env symbol? => symbol?]
   (let [feature (:feature-context env)
         {:keys [nsalias->ns]} (get-in env [:parsing-envs feature])
         {:keys [namespace->alias

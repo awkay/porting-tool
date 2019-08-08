@@ -9,7 +9,7 @@
     [rewrite-clj.node :as zn]
     [rewrite-clj.parser :as p]))
 
-(set-refresh-dirs "src/main" "src/test" "../fulcro-spec/src/main")
+(set-refresh-dirs "src/main" "src/test" )
 (alter-var-root #'s/*explain-out* (constantly expound/printer))
 
 (comment

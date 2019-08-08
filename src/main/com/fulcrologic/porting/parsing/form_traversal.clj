@@ -176,7 +176,7 @@
                                                                (:zloc new-env)))
                                                  zloc2     (z/edit-node zloc fz)]
                                              (assoc @final-env :zloc zloc2)))]
-                         (apply-xform e)))
+                         (or (apply-xform e) e)))
                      env
                      transforms)]
     (cond

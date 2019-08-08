@@ -69,9 +69,9 @@
       (let [clj-form      (ft/current-form env :clj)
             cljs-form     (ft/current-form env :cljs)
             agnostic-form (ft/current-form env :none)
-            new-env       (-> env
-                            (update-in [:parsing-envs :clj] nsparser/parse-namespace clj-form)
-                            (update-in [:parsing-envs :cljs] nsparser/parse-namespace cljs-form)
-                            (update-in [:parsing-envs :agnostic] nsparser/parse-namespace agnostic-form))]
+            new-env       (cond-> env
+                            clj-form (update-in [:parsing-envs :clj] (fnil nsparser/parse-namespace {}) clj-form)
+                            cljs-form (update-in [:parsing-envs :cljs] (fnil nsparser/parse-namespace {}) cljs-form)
+                            agnostic-form (update-in [:parsing-envs :agnostic] (fnil nsparser/parse-namespace {}) agnostic-form))]
         new-env)
       env)))

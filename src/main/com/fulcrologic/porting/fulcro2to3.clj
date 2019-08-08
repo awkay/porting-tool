@@ -91,13 +91,13 @@
                                    fulcro.client.impl.data-fetch
                                    fulcro.client.impl.data-targeting}
 
-            :transforms         [rename/flatten-nested-libspecs-transform
-                                 core/record-aliases
+            :transforms         [core/record-aliases
+                                 rename/flatten-nested-libspecs-transform
                                  rename/rename-artifacts-transform
                                  rename/rename-namespaces-transform
                                  rename/add-missing-namespaces-transform
                                  fulcro/update-lifecycle-transform
-                                 fulcro/warn-missing-deps
+                                 ;fulcro/warn-missing-deps
                                  rename/delete-namespaces-transform]
             :namespace->alias   {'com.fulcrologic.fulcro.algorithms.tempid              'tempid
                                  'com.fulcrologic.fulcro.algorithms.normalize           'fnorm
