@@ -10,6 +10,7 @@
 
 (set-refresh-dirs "src/main" "src/test")
 (alter-var-root #'s/*explain-out* (constantly expound/printer))
+(log/set-level! :warn)
 
 (comment
 

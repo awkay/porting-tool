@@ -560,7 +560,6 @@
 (let [base {:fqname-old->new    {
                                  'fulcro.client.data-fetch/append-to                       'com.fulcrologic.fulcro.algorithms.data-targeting/append-to
                                  'fulcro.client.data-fetch/data-state?                     'com.fulcrologic.fulcro.data-fetch/data-state?
-                                 'fulcro.client.data-fetch/elide-query-nodes               'com.fulcrologic.fulcro.algorithms.misc/elide-query-nodes
                                  'fulcro.client.data-fetch/failed?                         'com.fulcrologic.fulcro.data-fetch/failed?
                                  'fulcro.client.data-fetch/load                            'com.fulcrologic.fulcro.data-fetch/load!
                                  'fulcro.client.data-fetch/load-field                      'com.fulcrologic.fulcro.data-fetch/load-field!
@@ -612,12 +611,17 @@
                                  ;'fulcro.client.primitives/integrate-ident!    nil
                                  }
 
-            :namespace-old->new {'fulcro.client.data-fetch 'com.fulcrologic.fulcro.data-fetch
-                                 'fulcro.client.dom-common 'com.fulcrologic.fulcro.dom-common
-                                 'fulcro.client.mutations  'com.fulcrologic.fulcro.mutations}
+            :namespace-old->new '{fulcro.client.data-fetch           com.fulcrologic.fulcro.data-fetch
+                                  fulcro.client.dom-common           com.fulcrologic.fulcro.dom-common
+                                  fulcro.client.dom                  com.fulcrologic.fulcro.dom
+                                  fulcro.incubator.dynamic-routing   com.fulcrologic.fulcro.routing.dynamic-routing
+                                  fulcro.incubator.ui-state-machines com.fulcrologic.fulcro.ui-state-machines
+                                  fulcro.websockets                  com.fulcrologic.fulcro.networking.websockets
+                                  fulcro.client.mutations            com.fulcrologic.fulcro.mutations}
 
             :deleted-namespaces '#{fulcro.client.primitives
                                    fulcro.client.routing
+                                   fulcro.client
                                    fulcro.client.impl.parser
                                    fulcro.client.cards
                                    fulcro.client.util
@@ -631,8 +635,8 @@
 
             :transforms         [core/record-aliases
                                  rename/flatten-nested-libspecs-transform
-                                 rename/rename-artifacts-transform
                                  rename/rename-namespaces-transform
+                                 rename/rename-artifacts-transform
                                  rename/add-missing-namespaces-transform
                                  fulcro/update-lifecycle-transform
                                  ;fulcro/warn-missing-deps
@@ -644,7 +648,6 @@
                                  'com.fulcrologic.fulcro.algorithms.tx-processing       'txn
                                  'com.fulcrologic.fulcro.algorithms.application-helpers 'ah
                                  'com.fulcrologic.fulcro.algorithms.form-state          'fs
-                                 'com.fulcrologic.fulcro.algorithms.misc                'fmisc
                                  'com.fulcrologic.fulcro.algorithms.data-targeting      'targeting
                                  'com.fulcrologic.fulcro.application                    'app
                                  'com.fulcrologic.fulcro.components                     'comp
@@ -726,14 +729,5 @@
       (sorted-map)
       (keys simple->old-fqnames))))
 
-
-
-(binding [pprint/*print-right-margin* 120]
-  (spit "remap.edn" (with-out-str (pprint/pprint (get-fulcro-remappings))))
-  )
-
 (comment
-
-
-
-  (-main "resources"))
+  (-main "/Users/tonykay/fulcrologic/ucv/src/main/ucv/util.cljc"))
