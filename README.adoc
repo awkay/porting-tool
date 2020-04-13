@@ -1,5 +1,11 @@
 == Porting Tool
 
+WARNING: I've abandoned this effort. I ended up not wanting to 
+spend the time refining it (I have enough jobs), and the
+approach didn't work very well (the zipper approach was very slow at
+runtime). Do not contact me about it, but feel free
+to look around or play with it.
+
 This is a small library that can parse clj/cljs/cljc files and apply transforms.
 It is not a full interpreter for Clojure, so it has limited understanding of the source, but it does understand namespaces and aliasing so that you can do the most common operations necessary for custom source refactorings.
 
