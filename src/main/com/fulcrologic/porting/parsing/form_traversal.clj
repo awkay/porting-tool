@@ -94,10 +94,10 @@
 (>defn process-list [env]
   [::pspec/processing-env => any?]
   (let [possible-function-name (first (current-form env))
-        env                    (update env ::path (fnil conj (list)) possible-function-name)
-        feature                (:feature-context env)
         function-name          (cond->> possible-function-name
                                  (symbol? possible-function-name) (util/sym->fqsym env))
+        env                    (update env ::path (fnil conj (list)) function-name)
+        feature                (:feature-context env)
         {:keys [let-forms defn-forms]} (-> (get-in env [:config feature])
                                          (update :let-forms set/union known-let-forms)
                                          (update :defn-forms set/union known-defn-forms))]
@@ -176,7 +176,7 @@
                                                                (:zloc new-env)))
                                                  zloc2     (z/edit-node zloc fz)]
                                              (assoc @final-env :zloc zloc2)))]
-                         (apply-xform e)))
+                         (or (apply-xform e) e)))
                      env
                      transforms)]
     (cond
@@ -259,7 +259,7 @@
   "Returns the current form at the current processing position. If `lang` is provided reader conditionals
   will be replaced with that branch (if it exists)."
   ([env lang]
-   [::pspec/processing-env => any?]
+   [::pspec/processing-env keyword? => any?]
    (if (node/printable-only? (current-node env))
      (z/string (current-loc env))
      (loc->form (current-loc env) lang)))
@@ -270,10 +270,11 @@
      (z/sexpr (current-loc env)))))
 
 (defn replace-current-form [env new-value]
-  (log/info "Replacing form with " new-value)
   (update env :zloc z/replace new-value))
 
 (comment
+
+
   (let [forms-zipper (z/of-string "(ns a (:require #?(:clj 1 :cljs 2)))\n(defn f [a] #?(:clj 42 :cljs 43))")
         ns-loc       (z/leftmost forms-zipper)
         actual       (loc->form ns-loc :clj)]

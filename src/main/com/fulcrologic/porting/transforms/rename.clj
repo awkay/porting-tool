@@ -8,13 +8,50 @@
     [taoensso.timbre :as log]
     [clojure.walk :as walk]
     [clojure.spec.alpha :as s]
+    [rewrite-clj.node.whitespace :as ws]
     [com.fulcrologic.porting.rewrite-clj.zip :as z]))
+
+(defn flatten-nested-libspecs-transform
+  "A transform that flattens nested require libspecs so that rename can work on them."
+  [env]
+  (let [f (ft/current-form env)]
+    (if (and (ft/within env 'ns) (ft/within env :require) (vector? f) (symbol? (first f)) (vector? (second f)))
+      (let [main-ns  (first f)
+            subspecs (rest f)
+            newforms (reduce
+                       (fn [result [subname & args]]
+                         (-> result
+                           (conj (into [(symbol (str main-ns "." subname))] args))
+                           (conj (ws/newline-node "\n"))))
+                       []
+                       subspecs)]
+        (update env :zloc (fn [loc] (-> loc
+                                      (z/replace newforms)
+                                      z/splice))))
+      env)))
+
+(defn delete-namespaces-transform
+  "A transform that deletes namespace requires from the ns form. The config is:
+
+  * `:deleted-namespaces #{fqsyms}`
+  "
+  [env]
+  (let [f       (ft/current-form env)
+        feature (:feature-context env)
+        {:keys [deleted-namespaces]} (get-in env [:config feature])]
+    (if (and (ft/within env 'ns) (ft/within env :require) (vector? f) (symbol? (first f)))
+      (let [ns (first f)]
+        (if (contains? deleted-namespaces ns)
+          (update env :zloc z/replace (ws/whitespace-node " "))
+          env))
+      env)))
 
 (>defn- resolve-new-name
   "Given a processing env and a fully-qualified symbol, return
-  the most succinct qualified symbol that will work after any possible renames."
+  the most succinct qualified symbol that will work after any possible renames. If the symbol cannot be resolved
+  it simply returns the original input."
   [env sym]
-  [::pspecs/processing-env qualified-symbol? => qualified-symbol?]
+  [::pspecs/processing-env symbol? => symbol?]
   (let [feature (:feature-context env)
         {:keys [nsalias->ns]} (get-in env [:parsing-envs feature])
         {:keys [namespace->alias
@@ -108,8 +145,9 @@
             {:keys [namespace->alias]} (get-in env [:config feature])
             elements (reduce
                        (fn [result ns]
-                         (cond-> [ns]
-                           (get namespace->alias ns) (conj :as (namespace->alias ns))))
+                         (conj result
+                           (cond-> [ns]
+                             (get namespace->alias ns) (conj :as (namespace->alias ns)))))
                        []
                        nses)]
         (update env :zloc (fn [loc] (-> loc

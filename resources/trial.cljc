@@ -1,8 +1,9 @@
 (ns trial
   (:require
-    [fulcro.client.primitives :as prim :refer [defsc]]
-    [fulcro.client.data-fetch :as df]
-    [fulcro.client.mutations :as m]
+    [fulcro.client
+     [primitives :as prim :refer [defsc]]
+     [data-fetch :as df]
+     [mutations :as m]]
     #?(:cljs [fulcro.client.dom :as dom]
        :clj  [fulcro.client.dom-server :as dom])))
 
@@ -29,7 +30,7 @@
     (swap! state assoc-in [:x 1] {}))
   (remote [env] (df/remote-load env)))
 
-(defsc Component [this props]
+(defsc Component [t props]
   {:componentDidMount (fn [] ...)}
   (let [computed (prim/get-computed this)]
     (dom/div

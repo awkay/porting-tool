@@ -46,8 +46,7 @@
   ([message] (report-error! message *current-form*))
   ([message form]
    (let [{:keys [line column]} (meta form)]
-     (log/error (str *current-file* " " line ":" column " - " message)))
-   (throw (ex-info "Failed" {}))))
+     (log/error (str *current-file* " " line ":" column " - " message)))))
 
 (>defn find-maplike-vals
   "Recursively searches `data` for maps that contain `k`, or vectors that look like MapEntries.
